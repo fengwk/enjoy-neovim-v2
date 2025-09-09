@@ -1,0 +1,54 @@
+-- --- 判断是否是用户缓冲区
+-- -- @param bufnr number 缓冲区编号
+-- -- @return boolean
+-- local function is_user_buf(bufnr)
+--   local buf_name = vim.fn.bufname(bufnr)
+--   if buf_name:match("^%[dap%-terminal%]") then
+--     return false
+--   end
+--   if vim.api.nvim_buf_is_valid(bufnr) and globals.is_special_ft(bufnr) then
+--     return false
+--   end
+--   return true
+-- end
+--
+-- -- 当最后一个用户窗口关闭时，自动关闭所有其他窗口并退出 Neovim
+-- local group = vim.api.nvim_create_augroup("user_auto_close_win", { clear = true })
+-- vim.api.nvim_create_autocmd({ "WinClosed" }, {
+--   group = group,
+--   pattern = "*",
+--   callback = function()
+--     local cur_win = tonumber(vim.fn.expand("<amatch>"))
+--     if not cur_win then return end
+--     local cur_buf = vim.api.nvim_win_get_buf(cur_win)
+--
+--     -- 如果关闭的是特殊窗口，则不处理
+--     if globals.is_special_ft(cur_buf) then
+--       return
+--     end
+--
+--     local user_win_cnt = 0
+--     local other_win_cnt = 0
+--     local wins = vim.api.nvim_list_wins()
+--     for _, win in ipairs(wins) do
+--       if win ~= cur_win then -- 忽略当前正在关闭的窗口
+--         local bufnr = vim.api.nvim_win_get_buf(win)
+--         if bufnr and is_user_buf(bufnr) then
+--           user_win_cnt = user_win_cnt + 1
+--         else
+--           other_win_cnt = other_win_cnt + 1
+--         end
+--       end
+--     end
+--
+--     -- 如果没有剩余的用户窗口，但仍有其他窗口，则尝试退出
+--     if user_win_cnt == 0 and other_win_cnt > 0 then
+--       vim.schedule(function()
+--         local ok = pcall(vim.cmd, "qall")
+--         if not ok then
+--           vim.notify("No write since last change", vim.log.levels.ERROR)
+--         end
+--       end)
+--     end
+--   end
+-- })
