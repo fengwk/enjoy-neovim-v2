@@ -1,29 +1,33 @@
 local utils = require "fengwk.utils"
 
+-- 进入后清理 jumplist, 避免意外的回跳
+local clearjumps_group = vim.api.nvim_create_augroup("user_clearjumps", { clear = true })
+vim.api.nvim_create_autocmd("VimEnter", {
+  group = clearjumps_group,
+  callback = function()
+    vim.cmd("clearjumps")
+  end
+})
+
 -- 开启 Neovim 的标题设置功能
 vim.o.title = true
-
 -- 注册标题自动刷新
-local group = vim.api.nvim_create_augroup("user_nvim_title_change", { clear = true })
+local refresh_title_group = vim.api.nvim_create_augroup("user_refresh_title", { clear = true })
 vim.api.nvim_create_autocmd({ "BufEnter", "DirChanged", "FocusGained" }, {
-  group = group,
+  group = refresh_title_group,
   callback = function()
     vim.schedule(utils.update_title)
   end,
 })
-
 -- 离开时恢复终端默认标题
-local group2 = vim.api.nvim_create_augroup("user_nvim_leave", { clear = true })
 vim.api.nvim_create_autocmd({ "VimLeave" }, {
-  group = group2,
+  group = refresh_title_group,
   callback = function()
     utils.reset_title()
   end,
 })
-
 -- 确保启动 Neovim 后标题能立即显示
 utils.update_title()
-
 
 -- 展示当前缓冲区名称
 vim.api.nvim_create_user_command("ShowName", function()

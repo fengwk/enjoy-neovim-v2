@@ -20,7 +20,7 @@ vim.o.ignorecase = true -- 忽略大小写敏感匹配
 vim.o.smartcase = true  -- 如果同时输入大小写则进行大小写敏感匹配
 
 -- 背景色：dark、light
-vim.o.bg = "dark"
+vim.o.bg = require "fengwk.globals".theme.bg
 -- 真彩色支持
 vim.o.termguicolors = true
 -- 行高亮
@@ -73,7 +73,8 @@ vim.o.listchars = "tab:>-,trail:·,precedes:«,extends:»,"
 -- vim.o.clipboard = 'unnamed'
 -- https://stackoverflow.com/questions/30691466/what-is-difference-between-vims-clipboard-unnamed-and-unnamedplus-settings
 -- vim.cmd("set clipboard^=unnamed,unnamedplus")
-vim.o.clipboard = 'unnamedplus'
+vim.opt.clipboard:append("unnamedplus")
+-- vim.o.clipboard = 'unnamedplus'
 -- ssh环境支持osc52，使ssh连接也能共享剪切板
 if os.getenv("SSH_TTY") ~= nil then
   vim.g.clipboard = {

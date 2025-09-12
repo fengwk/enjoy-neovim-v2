@@ -1,3 +1,5 @@
+local globals = require "fengwk.globals"
+
 -- 编辑器增强插件
 return {
   {
@@ -43,19 +45,60 @@ return {
     -- https://github.com/lukas-reineke/indent-blankline.nvim
     "lukas-reineke/indent-blankline.nvim",
     event = "VeryLazy",
-    main = "ibl",
-    opts = {
-      -- 是否启用作用域高亮显示
-      scope = { enabled = false },
-    },
+    config = function()
+      local ibl = require "ibl"
+      -- local highlight = {
+      --   "RainbowRed",
+      --   "RainbowYellow",
+      --   "RainbowBlue",
+      --   "RainbowOrange",
+      --   "RainbowGreen",
+      --   "RainbowViolet",
+      --   "RainbowCyan",
+      -- }
+      ibl.setup {
+        -- 是否启用作用域高亮显示
+        scope = { enabled = true },
+        -- 多色缩进竖条
+        -- indent = { highlight = highlight },
+      }
+    end,
     dependencies = { "nvim-treesitter/nvim-treesitter" },
   },
   {
+    -- https://github.com/kevinhwang91/nvim-bqf
+    -- tab S-tab: qf 筛选
+    -- zn: 使用筛选列表
+    -- zf: 进入 fzf 模式, 同样可以使用 tab S-tab 筛选, 回车固定筛选列表 (单一选项会直接跳转)
     "kevinhwang91/nvim-bqf",
     event = "VeryLazy",
     opts = {
       preview = {
-        winblend = require "fengwk.globals".theme.winblend,
+        winblend = globals.theme.winblend,
+        show_scroll_bar = false,
+        wrap = true,
+      },
+    },
+    dependencies = {
+      "junegunn/fzf",
+      "nvim-treesitter/nvim-treesitter",
+    },
+  },
+  {
+    "catgoose/nvim-colorizer.lua",
+    event = "BufReadPre",
+    opts = {
+      -- 仅在样式文件上支持名称颜色 etc red
+      filetypes = {
+        css = { names = true },
+        less = { names = true },
+        sass = { names = true },
+        scss = { names = true },
+        html = { names = true },
+        "*", -- 必须放在最后
+      },
+      user_default_options = {
+        names = false,
       },
     },
   },
@@ -89,10 +132,12 @@ return {
     end,
   },
   {
+    -- https://github.com/godlygeek/tabular
     "godlygeek/tabular",
     event = "VeryLazy",
   },
   {
+    -- https://github.com/jbyuki/venn.nvim
     "jbyuki/venn.nvim",
     event = "VeryLazy",
     config = function()

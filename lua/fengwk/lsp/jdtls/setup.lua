@@ -151,7 +151,10 @@ local function build_runtimes()
   return runtimes
 end
 
-local function build_conf(base_conf)
+local function build_conf(base_conf, bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  local current_buf_filename = vim.api.nvim_buf_get_name(bufnr)
+
   local found = vim.fs.find({
     "build.xml",           -- Ant
     "mvnw",                -- Maven
@@ -159,7 +162,7 @@ local function build_conf(base_conf)
     "settings.gradle",     -- Gradle
     "settings.gradle.kts", -- Gradle
     "gradlew",             -- Gradle
-  }, { limit = math.huge, upward = true })
+  }, { path = current_buf_filename, limit = math.huge, upward = true })
 
   local root_dir = found and #found > 0 and vim.fs.dirname(found[#found]) or nil
 
@@ -197,7 +200,7 @@ local function build_conf(base_conf)
       jdtls_cmd,
       "--jvm-arg=-javaagent:" .. lombok_jar,
       "--jvm-arg=-Xmx4g",
-      "--jvm-arg=-XX:+UseZGC", -- ZGC
+      "--jvm-arg=-XX:+UseZGC",    -- ZGC
       "--jvm-arg=-XX:+ZUncommit", -- 允许将未使用的内存归还给操作系统
     },
 
@@ -219,13 +222,13 @@ local function build_conf(base_conf)
       vim.api.nvim_create_user_command("JdtTestMethod",
         function() require("jdtls").test_nearest_method() end, {})
       vim.api.nvim_create_user_command("JdtRemoteDebug",
-        function() require("fengwk.plugins.lsp.lsp-jdtls.jdtls-enhancer").remote_debug() end, {})
+        function() require("fengwk.lsp.jdtls.enhancer").remote_debug() end, {})
       vim.api.nvim_create_user_command("JdtDebug",
-        function() require("fengwk.plugins.lsp.lsp-jdtls.jdtls-enhancer").debug() end, {})
+        function() require("fengwk.lsp.jdtls.enhancer").debug() end, {})
 
       -- 拷贝引用
       vim.api.nvim_create_user_command("JdtCopyReference", function()
-        require("fengwk.plugins.lsp.lsp-jdtls.jdtls-enhancer").copy_reference()
+        require("fengwk.lsp.jdtls.enhancer").copy_reference()
       end, {})
 
       -- 设置jdt的扩展快捷键，跳转到父类或接口
@@ -306,8 +309,8 @@ local function build_conf(base_conf)
 end
 
 local function setup(base_conf)
-  local function start_or_attach()
-    local conf = build_conf(base_conf)
+  local function start_or_attach(bufnr)
+    local conf = build_conf(base_conf, bufnr)
     jdtls.start_or_attach(conf)
   end
 
@@ -315,17 +318,25 @@ local function setup(base_conf)
   -- java or ant 文件启动 jdtls
   vim.api.nvim_create_autocmd(
     { "FileType" },
-    { group = group, pattern = "java,ant", callback = start_or_attach })
+    {
+      group = group,
+      pattern = "java,ant",
+      callback = function(args)
+        local bufnr = args.buf
+        start_or_attach(bufnr)
+      end
+    })
   -- pom.xml文件启动jdtls
   vim.api.nvim_create_autocmd(
     { "FileType" },
     {
       group = "user_jdtls_setup",
       pattern = "xml",
-      callback = function()
+      callback = function(args)
         local name = vim.fn.expand("%:t")
         if name == "pom.xml" then
-          start_or_attach()
+          local bufnr = args.buf
+          start_or_attach(bufnr)
         end
       end
     })

@@ -1,5 +1,6 @@
 local M = {}
 
+local globals = require "fengwk.globals"
 local utils = require "fengwk.utils"
 
 local data_path = vim.fs.joinpath(vim.fn.stdpath("data"), "workspaces.json")
@@ -144,6 +145,9 @@ function M.open(ws_root, force)
   end
 
   vim.schedule(function()
+    if globals.is_special_ft() then
+      return
+    end
     local ok, err = pcall(vim.cmd, "edit " .. vim.fn.fnameescape(file_to_open))
     if ok then
       vim.notify("Workspace opened: " .. ws_name)
@@ -163,6 +167,10 @@ function M.auto_record_workspace_buffer()
     return
   end
 
+  if globals.is_special_ft() then
+    return
+  end
+
   local file_path = vim.fn.expand("%:p")
   if not file_path or file_path == "" then
     return
@@ -174,11 +182,16 @@ function M.auto_record_workspace_buffer()
     return
   end
 
-  data[current_workspace] = {
-    last_file = utils.normalize_path(file_path),
-  }
-  data_cache = data
-  write_data()
+  local last_file = utils.normalize_path(file_path)
+  if vim.startswith(last_file, current_workspace) then
+    vim.schedule(function()
+      data[current_workspace] = {
+        last_file = last_file,
+      }
+      data_cache = data
+      write_data()
+    end)
+  end
 end
 
 function M.update_current_workspace()
@@ -202,7 +215,6 @@ function M.setup()
   -- 恢复光标位置
   vim.api.nvim_create_autocmd("BufReadPost", {
     group = group,
-    pattern = "*",
     callback = function()
       if vim.fn.line("'\"") > 1 and vim.fn.line("'\"") <= vim.fn.line("$") then
         vim.cmd("normal! g'\"zz")
@@ -213,11 +225,14 @@ function M.setup()
   -- 启动时自动打开工作区
   vim.api.nvim_create_autocmd("VimEnter", {
     group = group,
-    pattern = "*",
     callback = function()
       M.update_current_workspace()
-      if vim.fn.argc() == 0 and current_workspace then
-        M.open(current_workspace, true)
+      if vim.fn.argc() == 0 then
+        if current_workspace then
+          M.open(current_workspace, true)
+        end
+      else
+        M.auto_record_workspace_buffer()
       end
     end,
   })
@@ -225,12 +240,11 @@ function M.setup()
   -- 切换目录时更新当前工作区状态
   vim.api.nvim_create_autocmd("DirChanged", {
     group = group,
-    pattern = "*",
     callback = M.update_current_workspace,
   })
 
   -- 进入缓冲区后自动记录
-  vim.api.nvim_create_autocmd("BufEnter", {
+  vim.api.nvim_create_autocmd({ "BufEnter" }, {
     group = group,
     callback = M.auto_record_workspace_buffer,
   })

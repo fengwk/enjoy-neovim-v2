@@ -1,0 +1,133 @@
+return {
+  "yetone/avante.nvim",
+  -- 如果您想从源代码构建，请执行 `make BUILD_FROM_SOURCE=true`
+  -- ⚠️ 一定要加上这一行配置！！！！！
+  build = vim.fn.has("win32") ~= 0
+      and "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false"
+      or "make",
+  event = "VeryLazy",
+  version = false, -- 永远不要将此值设置为 "*"！永远不要！
+  config = function()
+    -- 全局使用单一状态栏
+    vim.opt.laststatus = 3
+
+    local avante = require "avante"
+    -- https://github.com/yetone/avante.nvim/blob/main/lua/avante/config.lua
+    avante.setup {
+      -- 在 Aider 模式或 Cursor 规划模式的规划阶段使用的提供者
+      provider = "gemini",
+      -- 警告：由于自动建议是高频操作，因此成本较高，
+      -- 目前将其指定为 `copilot` 提供者是危险的，因为：https://github.com/yetone/avante.nvim/issues/1048
+      -- 当然，您可以通过增加 `suggestion.debounce` 来减少请求频率。
+      auto_suggestions_provider = "gemini",
+      providers = {
+        gemini = {
+          endpoint = "https://gpt-load.kk1.fun/proxy/gemini/v1beta/models",
+          model = "gemini-2.5-pro",
+          timeout = 60000,
+          extra_request_body = {
+            temperature = 0,
+          },
+        },
+        moonshot = {
+          endpoint = "https://api.moonshot.cn/v1",
+          model = "kimi-k2-0905-preview",
+          timeout = 60000,
+          extra_request_body = {
+            temperature = 0,
+          },
+        },
+        deepseek = {
+          __inherited_from = "openai",
+          endpoint = "https://api.deepseek.com",
+          -- api_key_name = "DEEPSEEK_API_KEY",
+          model = "deepseek-chat",
+        },
+        -- 默认设置
+        vertex = {
+          endpoint = "https://gpt-load.kk1.fun/proxy/gemini/v1beta/models",
+          model = "gemini-2.5-pro",
+          timeout = 60000,
+          extra_request_body = {
+            temperature = 0,
+          },
+        },
+      },
+      web_search_engine = {
+        provider = "searxng", -- tavily, serpapi, google, kagi, brave 或 searxng
+        proxy = nil,          -- proxy support, e.g., http://127.0.0.1:7890
+      },
+      ---Specify the behaviour of avante.nvim
+      ---1. auto_focus_sidebar              : Whether to automatically focus the sidebar when opening avante.nvim. Default to true.
+      ---2. auto_suggestions = false, -- Whether to enable auto suggestions. Default to false.
+      ---3. auto_apply_diff_after_generation: Whether to automatically apply diff after LLM response.
+      ---                                     This would simulate similar behaviour to cursor. Default to false.
+      ---4. auto_set_keymaps                : Whether to automatically set the keymap for the current line. Default to true.
+      ---                                     Note that avante will safely set these keymap. See https://github.com/yetone/avante.nvim/wiki#keymaps-and-api-i-guess for more details.
+      ---5. auto_set_highlight_group        : Whether to automatically set the highlight group for the current line. Default to true.
+      ---6. jump_result_buffer_on_finish = false, -- Whether to automatically jump to the result buffer after generation
+      ---7. support_paste_from_clipboard    : Whether to support pasting image from clipboard. This will be determined automatically based whether img-clip is available or not.
+      ---8. minimize_diff                   : Whether to remove unchanged lines when applying a code block
+      ---9. enable_token_counting           : Whether to enable token counting. Default to true.
+      behaviour = {
+        -- 打开 avante.nvim 时是否自动聚焦侧边栏
+        auto_focus_sidebar = true,
+        -- 是否启用自动建议
+        auto_suggestions = false, -- Experimental stage
+        -- 自动建议是否应遵循 .gitignore 等忽略文件
+        auto_suggestions_respect_ignore = true,
+        -- 是否自动为当前行设置高亮组
+        auto_set_highlight_group = true,
+        -- 是否自动设置当前行的快捷键
+        auto_set_keymaps = true,
+        -- LLM 响应后是否自动应用差异
+        auto_apply_diff_after_generation = false,
+        -- 生成后是否自动跳转到结果缓冲区
+        jump_result_buffer_on_finish = false,
+        -- 是否支持从剪贴板粘贴图像
+        support_paste_from_clipboard = false,
+        -- 应用代码块时是否删除未更改的行
+        minimize_diff = true,
+        -- 是否启用令牌计数
+        enable_token_counting = true,
+        -- 是否使用当前工作目录作为项目根目录
+        use_cwd_as_project_root = false,
+        -- 是否在差异视图上自动聚焦
+        auto_focus_on_diff_view = false,
+        ---@type boolean | string[] -- true: auto-approve all tools, false: normal prompts, string[]: auto-approve specific tools by name
+        -- 是否自动批准工具权限
+        auto_approve_tool_permissions = false, -- Default: show permission prompts for all tools
+        -- 是否自动检查诊断信息
+        auto_check_diagnostics = true,
+        -- 是否启用快速应用
+        enable_fastapply = false,
+      },
+      mappings = {
+        sidebar = {
+          close = { "q", "<C-q>" },
+          close_from_input = { normal = { "q", "<C-q>" }, insert = "<C-q>" },
+        },
+        select_model = "<leader>am",
+      },
+      windows = {
+        -- width = 35, -- 默认基于可用宽度的百分比
+        sidebar_header = {
+          rounded = false,
+        },
+        input = {
+          height = 13, -- Height of the input window in vertical layout
+        },
+      },
+    }
+  end,
+  dependencies = {
+    "nvim-lua/plenary.nvim",
+    "MunifTanjim/nui.nvim",
+
+    "nvim-telescope/telescope.nvim",             -- 用于文件选择器提供者 telescope
+    "hrsh7th/nvim-cmp",                          -- avante 命令和提及的自动完成
+    -- "zbirenbaum/copilot.lua",        -- 用于 providers='copilot'
+    "HakonHarnes/img-clip.nvim",                 -- 图像复制黏贴
+    "MeanderingProgrammer/render-markdown.nvim", -- markdown 渲染
+  },
+}

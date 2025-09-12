@@ -10,6 +10,16 @@ return {
     local telescope_themes = require "telescope.themes"
     local telescope_builtin = require "telescope.builtin"
 
+    -- 支持 preview 窗口 wrap
+    local group = vim.api.nvim_create_augroup("user_telescope", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      group = group,
+      pattern = "TelescopePreviewerLoaded",
+      callback = function()
+        vim.wo.wrap = true
+      end,
+    })
+
     telescope.setup {
       defaults = {
         -- 历史记录
@@ -42,16 +52,16 @@ return {
             ["<C-c>"] = actions.close,
             ["<Tab>"] = actions.toggle_selection + actions.move_selection_worse,
             ["<S-Tab>"] = actions.toggle_selection + actions.move_selection_better,
-            ["<C-Tab>"] = actions.toggle_all,
-            ["<C-S-Q>"] = actions.send_selected_to_qflist + actions.open_qflist,
+            ["<C-\\>"] = actions.toggle_all,
+            ["<C-e>"] = actions.send_selected_to_qflist + actions.open_qflist,
           },
           n = {
             ["<C-c>"] = actions.close,
             ["q"] = actions.close,
             ["<Tab>"] = actions.toggle_selection + actions.move_selection_worse,
             ["<S-Tab>"] = actions.toggle_selection + actions.move_selection_better,
-            ["<C-Tab>"] = actions.toggle_all,
-            ["<C-S-Q>"] = actions.send_selected_to_qflist + actions.open_qflist,
+            ["<C-\\>"] = actions.toggle_all,
+            ["<C-e>"] = actions.send_selected_to_qflist + actions.open_qflist,
           },
         },
       },
@@ -135,17 +145,17 @@ return {
           telescope_themes.get_dropdown {},
         },
 
-        -- ["jdtls"] = {
-        --   telescope_themes.get_dropdown {},
-        -- },
+        ["jdtls"] = {
+          telescope_themes.get_dropdown {},
+        },
 
         ["bookmarks"] = {
           telescope_themes.get_dropdown {},
         },
 
-        -- ["diff"] = {
-        --   telescope_themes.get_dropdown {},
-        -- },
+        ["diff"] = {
+          telescope_themes.get_dropdown {},
+        },
 
         ["live_grep_args"] = {
           auto_quoting = true, -- enable/disable auto-quoting
@@ -164,8 +174,8 @@ return {
     telescope.load_extension("ui-select")
     telescope.load_extension("workspaces")
     telescope.load_extension("live_grep_args")
-    -- telescope.load_extension("jdtls")
-    -- telescope.load_extension("diff")
+    telescope.load_extension("jdtls")
+    telescope.load_extension("diff")
     telescope.load_extension("bookmarks")
     telescope.load_extension("smart_history")
 
@@ -195,7 +205,7 @@ return {
       -- -F fixed-string 原意字符串，类似python的 r'xxx'
       -- 例如使用`-g **/lsp/* require`查找lsp目录下所有require字符
       -- telescope.extensions.live_grep_args.live_grep_args(telescope_themes.get_ivy())
-      telescope.extensions.live_grep_args.live_grep_args(telescope_themes.get_dropdown())
+      telescope.extensions.live_grep_args.live_grep_args(telescope_themes.get_dropdown({}))
     end
 
     local keymap = vim.keymap.set

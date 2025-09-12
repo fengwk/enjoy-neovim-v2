@@ -16,7 +16,6 @@
 -- local group = vim.api.nvim_create_augroup("user_auto_close_win", { clear = true })
 -- vim.api.nvim_create_autocmd({ "WinClosed" }, {
 --   group = group,
---   pattern = "*",
 --   callback = function()
 --     local cur_win = tonumber(vim.fn.expand("<amatch>"))
 --     if not cur_win then return end

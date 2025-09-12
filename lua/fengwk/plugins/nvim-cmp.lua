@@ -2,6 +2,15 @@ local feedkey = function(key, mode)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, true, true), mode, true)
 end
 
+local conflict_cn_tab = {
+  "AvanteInput", -- Avante 输入与 <C-n> 冲突
+}
+
+local function conflict_cn()
+  local ft = vim.api.nvim_buf_get_option(0, "filetype")
+  return vim.tbl_contains(conflict_cn_tab, ft)
+end
+
 return {
   "hrsh7th/nvim-cmp",
   event = "VeryLazy",
@@ -67,7 +76,7 @@ return {
         end, { "i", "s" }),
         -- 将 neovim 内置补全快捷键替换为 cmp 补全
         ["<C-n>"] = cmp.mapping(function(fallback)
-          if not cmp.visible() then
+          if not cmp.visible() and not conflict_cn() then
             cmp.complete()
           else
             fallback()
@@ -106,7 +115,12 @@ return {
       enabled = function()
         return vim.api.nvim_buf_get_option(0, "buftype") ~= "prompt"
             or require("cmp_dap").is_dap_buffer()
-      end
+      end,
+
+      window = {
+        completion = cmp.config.window.bordered(),
+        documentation = cmp.config.window.bordered(),
+      },
     }
 
     -- dap 补全

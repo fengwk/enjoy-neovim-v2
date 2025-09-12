@@ -12,7 +12,7 @@ local data_cache = nil
 
 -- 插件的默认配置
 local config = {
-  search_range = 150,
+  search_range = 300,
   sign = {
     enabled = true,
     name = "BookmarkSign",
@@ -70,7 +70,7 @@ end
 
 --- 添加一个书签
 function M.add_mark(annotation)
-  if globals.is_special_ft(0) then
+  if globals.is_special_ft() then
     vim.notify("Current file type does not support bookmarks", vim.log.levels.WARN)
     return
   end

@@ -161,7 +161,7 @@ end
 --- 更新当前终端标题, 需开启 Neovim 的标题设置功能
 --- vim.o.title = true
 function utils.update_title()
-  if globals.is_special_ft(0) then
+  if globals.is_special_ft() then
     return
   end
   local filename = vim.fn.expand('%:t')

@@ -184,16 +184,16 @@ local function build_lsp_conf(server, capabilities)
         workspaces.add(root_dir)
       end
 
-      -- 在诊断信息之间跳转
-      vim.keymap.set("n", "[e", vim.diagnostic.goto_prev,
-        { silent = true, desc = "Diagnostic Prev" })
-      vim.keymap.set("n", "]e", vim.diagnostic.goto_next,
-        { silent = true, desc = "Diagnostic Next" })
-      -- 使用telescope搜索诊断信息
-      vim.keymap.set("n", "[E", "<Cmd>lua require('telescope.builtin').diagnostics()<CR>",
+      -- 使用 telescope 搜索诊断信息
+      vim.keymap.set("n", "<leader>fd", "<Cmd>lua require('telescope.builtin').diagnostics()<CR>",
         { silent = true, desc = "Telescope Diagnostics" })
-      vim.keymap.set("n", "]E", "<Cmd>lua require('telescope.builtin').diagnostics()<CR>",
-        { silent = true, desc = "Telescope Diagnostics" })
+      -- 诊断跳转
+      vim.keymap.set("n", "[d", function()
+        vim.diagnostic.jump({ count = -1, float = true })
+      end, { silent = true, desc = "Diagnostic Prev" })
+      vim.keymap.set("n", "]d", function()
+        vim.diagnostic.jump({ count = 1, float = true })
+      end, { silent = true, desc = "Diagnostic Next" })
     end,
     handlers = {
       -- 仅在插入模式下响应 lsp 补全, 避免在非插入模式下触发 "complete() can only be used in Insert mode" 错误
@@ -202,6 +202,11 @@ local function build_lsp_conf(server, capabilities)
           vim.lsp.handlers["textDocument/completion"](err, result, method, params)
         end
       end,
+      ["textDocument/hover"] = vim.lsp.with(
+        vim.lsp.handlers.hover, {
+          border = globals.theme.border,
+        }
+      )
     },
   })
 end
@@ -250,6 +255,65 @@ local function set_dap_sign()
   vim.fn.sign_define('DapStopped', dap_breakpoint.stopped)
 end
 
+local function get_closeable_lsp_clients(bufnr)
+  local closeable_clients = {}
+  if bufnr and bufnr > 0 then
+    local clients = vim.lsp.get_clients()
+    -- 遍历所有lsp客户端
+    for _, c in pairs(clients) do
+      -- copilot会在所有缓冲区打开因此不做处理
+      if c and c.id and c.name ~= "copilot" then
+        -- 遍历指定客户端关联的所有缓冲区
+        local lsp_bufs = vim.lsp.get_buffers_by_client_id(c.id)
+        if not lsp_bufs or #lsp_bufs == 0
+            or (#lsp_bufs == 1 and lsp_bufs[1] == bufnr) then
+          table.insert(closeable_clients, c)
+        end
+      end
+    end
+  end
+  return closeable_clients
+end
+
+local function close_client(c)
+  if c then
+    vim.schedule(function()
+      vim.lsp.stop_client(c.id)
+      vim.notify("lsp client " .. c.name .. "[" .. c.id .. "]" .. " closed")
+      -- 过30秒如果还存在则强制关闭
+      vim.defer_fn(function()
+        local exists = vim.lsp.get_client_by_id(c.id)
+        if exists then
+          local lsp_bufs = vim.lsp.get_buffers_by_client_id(c.id)
+          if not lsp_bufs or #lsp_bufs == 0 then
+            vim.lsp.stop_client(c.id, { force = true })
+          end
+        end
+      end, 30000)
+    end)
+  end
+end
+
+local function register_lsp_destruction()
+  -- 设置lsp关闭钩子
+  vim.api.nvim_create_augroup("lsp_destruction", { clear = true })
+  vim.api.nvim_create_autocmd(
+    { "BufDelete" },
+    {
+      group = "lsp_destruction",
+      callback = function(args)
+        -- args.buf是当前被销毁的缓冲区
+        if args and args.buf and args.buf > 0 then
+          local closeableClients = get_closeable_lsp_clients(args.buf)
+          for _, c in ipairs(closeableClients) do
+            close_client(c);
+          end
+        end
+      end
+    }
+  )
+end
+
 return {
   {
     -- 依赖 git curl unzip tar gzip wget
@@ -269,9 +333,7 @@ return {
         group = group,
         pattern = "mason",
         callback = function()
-          vim.schedule(function()
-            vim.wo.wrap = true
-          end)
+          vim.wo.wrap = true
         end,
       })
 
@@ -280,9 +342,22 @@ return {
         automatic_enable = false, -- 手动 setup lsp
       }
 
+      -- 缓冲区删除时自动关闭空 lsp
+      register_lsp_destruction()
+
       -- 定义 lsp 日志级别
       -- TRACE DEBUG INFO WARN ERROR OFF
       vim.lsp.set_log_level("INFO")
+
+      -- 设置 ui
+      require "lspconfig.ui.windows".default_options.border = globals.theme.border
+      local source_fn = vim.lsp.util.open_floating_preview
+      vim.lsp.util.open_floating_preview = function(contents, syntax, opts, ...)
+        opts = opts or {}
+        opts.border = globals.theme.border -- 指定lsp预览的边框样式
+        return source_fn(contents, syntax, opts, ...)
+      end
+
 
       local capabilities = require "cmp_nvim_lsp".default_capabilities()
       local servers = mason_lspconfig.get_installed_servers()
@@ -432,9 +507,9 @@ return {
           }
 
           -- `` 打开当前 cwd 路径的终端
-          vim.keymap.set({ "n", "t" }, "``", "<Cmd>Lspsaga term_toggle<CR>", { desc = "Float Terminal" })
+          vim.keymap.set({ "n", "t" }, "<C-`>", "<Cmd>Lspsaga term_toggle<CR>", { desc = "Float Terminal" })
           -- `<Enter> 打开当前文件路径的终端
-          vim.keymap.set({ "n", "t" }, "`<Enter>", function()
+          vim.keymap.set({ "n", "t" }, "<C-1>", function()
             vim.api.nvim_command("Lspsaga term_toggle " .. os.getenv("SHELL") .. " " .. vim.fn.expand("%:p:h"))
           end, { desc = "Float Terminal On Current Buffer Directory" })
         end,

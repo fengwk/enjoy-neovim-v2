@@ -11,7 +11,7 @@ return {
         term_colors = true,
         dim_inactive = {
           enabled = false,
-          shade = "dark",
+          shade = require "fengwk.globals".theme.bg,
           percentage = 0.15,
         },
         -- https://github.com/catppuccin/nvim#integrations
@@ -36,6 +36,12 @@ return {
             inlay_hints = {
               background = true,
             },
+            diffview = true,
+          },
+          indent_blankline = {
+            enabled = true,
+            scope_color = "",
+            colored_indent_levels = true,
           },
         },
       }
