@@ -40,17 +40,57 @@ return {
         deepseek = {
           __inherited_from = "openai",
           endpoint = "https://api.deepseek.com",
-          -- api_key_name = "DEEPSEEK_API_KEY",
+          api_key_name = "DEEPSEEK_API_KEY",
           model = "deepseek-chat",
         },
-        -- 默认设置
+        -- 不使用的 provider
+        -- openai = {
+        --   hide_in_model_selector = true,
+        -- },
+        copilot = {
+          hide_in_model_selector = true,
+        },
+        azure = {
+          hide_in_model_selector = true,
+        },
+        claude = {
+          hide_in_model_selector = true,
+        },
+        bedrock = {
+          hide_in_model_selector = true,
+        },
         vertex = {
-          endpoint = "https://gpt-load.kk1.fun/proxy/gemini/v1beta/models",
-          model = "gemini-2.5-pro",
-          timeout = 60000,
-          extra_request_body = {
-            temperature = 0,
-          },
+          hide_in_model_selector = true,
+        },
+        cohere = {
+          hide_in_model_selector = true,
+        },
+        ollama = {
+          hide_in_model_selector = true,
+        },
+        watsonx_code_assistant = {
+          hide_in_model_selector = true,
+        },
+        vertex_claude = {
+          hide_in_model_selector = true,
+        },
+        ["claude-haiku"] = {
+          hide_in_model_selector = true,
+        },
+        ["claude-opus"] = {
+          hide_in_model_selector = true,
+        },
+        ["openai-gpt-4o-mini"] = {
+          hide_in_model_selector = true,
+        },
+        aihubmix = {
+          hide_in_model_selector = true,
+        },
+        ["aihubmix-claude"] = {
+          hide_in_model_selector = true,
+        },
+        morph = {
+          hide_in_model_selector = true,
         },
       },
       web_search_engine = {
@@ -104,8 +144,8 @@ return {
       },
       mappings = {
         sidebar = {
-          close = { "q", "<C-q>" },
-          close_from_input = { normal = { "q", "<C-q>" }, insert = "<C-q>" },
+          -- close = { "q", "<C-q>" },
+          -- close_from_input = { normal = { "q", "<C-q>" }, insert = "<C-q>" },
         },
         select_model = "<leader>am",
       },
