@@ -208,6 +208,14 @@ function M.get_current()
   return current_workspace
 end
 
+local function is_empty_file()
+  if vim.api.nvim_buf_line_count(0) > 1 then
+    return
+  end
+  local line = vim.api.nvim_buf_get_lines(0, 0, 1, false)[1]
+  return not line or line == ""
+end
+
 --- 设置插件
 function M.setup()
   local group = vim.api.nvim_create_augroup("user_workspace", { clear = true })
@@ -227,7 +235,8 @@ function M.setup()
     group = group,
     callback = function()
       M.update_current_workspace()
-      if vim.fn.argc() == 0 then
+      print(vim.inspect(vim.api.nvim_buf_line_count(0)))
+      if vim.fn.argc() == 0 and is_empty_file() then
         if current_workspace then
           M.open(current_workspace, true)
         end
