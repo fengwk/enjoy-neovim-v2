@@ -29,6 +29,15 @@ return {
             temperature = 0,
           },
         },
+        gemini_falsh = {
+          __inherited_from = "gemini",
+          endpoint = "https://gpt-load.kk1.fun/proxy/gemini/v1beta/models",
+          model = "gemini-2.5-flash",
+          timeout = 60000,
+          extra_request_body = {
+            temperature = 0,
+          },
+        },
         moonshot = {
           endpoint = "https://api.moonshot.cn/v1",
           model = "kimi-k2-0905-preview",
