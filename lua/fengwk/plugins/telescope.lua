@@ -1,3 +1,5 @@
+local utils = require "fengwk.utils"
+
 -- https://github.com/nvim-telescope/telescope.nvim
 return {
   "nvim-telescope/telescope.nvim",
@@ -19,6 +21,11 @@ return {
         vim.wo.wrap = true
       end,
     })
+
+    if utils.os == "win" then
+      local sqllite_dll = vim.fs.joinpath(vim.fn.stdpath("config"), "lib", "sqllite", "sqlite3.dll")
+      vim.g["sqlite_clib_path"] = sqllite_dll
+    end
 
     telescope.setup {
       defaults = {

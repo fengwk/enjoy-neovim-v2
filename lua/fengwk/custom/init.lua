@@ -6,3 +6,4 @@ require "fengwk.custom.format-json"
 
 require "fengwk.custom.bookmarks".setup()
 require "fengwk.custom.workspaces".setup()
+require "fengwk.custom.im-switch".setup()

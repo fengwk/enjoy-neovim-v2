@@ -50,6 +50,7 @@ keymap("x", "<C-c>", "y", { desc = "Yank to System Clipboard" })
 keymap({ "i" }, "jk", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode" })
 keymap({ "i" }, "JK", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode (Shift Delay)" })
 keymap({ "i" }, "Jk", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode (Shift Delay)" })
+keymap({ "i" }, "<C-j><C-k>", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode" })
 
 -- 在可视、命令行、终端模式下快速返回普通模式
 keymap({ "v", "c", "t" }, "<C-j><C-k>", "<Esc>", { noremap = true, desc = "Exit Modes to Normal Mode" })
