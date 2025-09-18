@@ -75,9 +75,6 @@ function M.add(ws_root)
   data_cache = data
   write_data()
   vim.notify("Workspace added: " .. ws_root)
-
-  M.update_current_workspace()
-  M.auto_record_workspace_buffer()
 end
 
 --- 移除一个工作区
@@ -115,26 +112,27 @@ end
 
 --- 打开指定的工作区
 ---@param ws_root string 工作区根路径
-function M.open(ws_root, force)
+function M.open(ws_root)
   if not ws_root or ws_root == "" then
     return
   end
   ws_root = utils.normalize_path(ws_root)
 
-  if not force and ws_root == current_workspace then
+  if ws_root == current_workspace then
     return
   end
 
   local data = M.read_data()
   if not data[ws_root] then
-    vim.notify("Workspace '" .. ws_root .. "' not found.", vim.log.levels.ERROR)
+    vim.notify("Workspace '" .. ws_root .. "' not found.", vim.log.levels.WARN)
     return
   end
 
   if not utils.cd(ws_root) then
-    vim.notify("Workspace '" .. ws_root .. "' directory not accessible.", vim.log.levels.ERROR)
+    vim.notify("Workspace '" .. ws_root .. "' directory not accessible.", vim.log.levels.WARN)
     return
   end
+  current_workspace = ws_root
 
   local ws_name = vim.fn.fnamemodify(ws_root, ":t")
   local file_to_open = data[ws_root] and data[ws_root].last_file
@@ -158,7 +156,7 @@ function M.open(ws_root, force)
   end)
 end
 
-function M.auto_record_workspace_buffer()
+function M.auto_record_buffer_enter()
   if not current_workspace then
     return
   end
@@ -172,7 +170,7 @@ function M.auto_record_workspace_buffer()
   end
 
   local file_path = vim.fn.expand("%:p")
-  if not file_path or file_path == "" then
+  if not file_path or file_path == "" or not utils.exists(file_path) then
     return
   end
 
@@ -184,6 +182,7 @@ function M.auto_record_workspace_buffer()
 
   local last_file = utils.normalize_path(file_path)
   if vim.startswith(last_file, current_workspace) then
+    -- 如果还在当前工作区则记录最后的访问文件
     vim.schedule(function()
       data[current_workspace] = {
         last_file = last_file,
@@ -191,16 +190,18 @@ function M.auto_record_workspace_buffer()
       data_cache = data
       write_data()
     end)
-  end
-end
-
-function M.update_current_workspace()
-  local ws_root = find_workspace_root(vim.fn.getcwd())
-  if ws_root and ws_root ~= current_workspace then
-    current_workspace = ws_root
-    vim.notify("Entered workspace: " .. vim.fn.fnamemodify(ws_root, ":t"), vim.log.levels.INFO)
-  elseif not ws_root and current_workspace then
-    current_workspace = nil
+  else
+    -- 处理工作区切换
+    for root_path, _ in pairs(data) do
+      if vim.startswith(last_file, root_path) then
+        if utils.cd(root_path) then
+          current_workspace = root_path
+        else
+          vim.notify("Workspace '" .. root_path .. "' directory not accessible.", vim.log.levels.WARN)
+        end
+        break
+      end
+    end
   end
 end
 
@@ -234,28 +235,22 @@ function M.setup()
   vim.api.nvim_create_autocmd("VimEnter", {
     group = group,
     callback = function()
-      M.update_current_workspace()
-      print(vim.inspect(vim.api.nvim_buf_line_count(0)))
       if vim.fn.argc() == 0 and is_empty_file() then
-        if current_workspace then
-          M.open(current_workspace, true)
+        local cwd = vim.fn.getcwd()
+        local ws_root = find_workspace_root(cwd)
+        if ws_root then
+          M.open(ws_root)
         end
       else
-        M.auto_record_workspace_buffer()
+        M.auto_record_buffer_enter()
       end
     end,
-  })
-
-  -- 切换目录时更新当前工作区状态
-  vim.api.nvim_create_autocmd("DirChanged", {
-    group = group,
-    callback = M.update_current_workspace,
   })
 
   -- 进入缓冲区后自动记录
   vim.api.nvim_create_autocmd({ "BufEnter" }, {
     group = group,
-    callback = M.auto_record_workspace_buffer,
+    callback = M.auto_record_buffer_enter,
   })
 
   vim.api.nvim_create_user_command("WorkspaceAdd", function(args)

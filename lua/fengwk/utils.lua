@@ -90,7 +90,12 @@ function utils.cd(cwd)
   end
 
   -- 将 vim 根路径定位到 cwd
-  local cd_ok, _ = pcall(vim.cmd, "cd " .. cwd)
+  local cd_ok;
+  if vim.fn.getcwd() == cwd then
+    cd_ok = true;
+  else
+    cd_ok, _ = pcall(vim.cmd, "cd " .. cwd)
+  end
 
   if cd_ok then
     -- 如果有 nvim-tree 将其根路径定位到 cwd

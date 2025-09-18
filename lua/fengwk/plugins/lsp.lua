@@ -506,12 +506,14 @@ return {
             },
           }
 
-          -- `` 打开当前 cwd 路径的终端
-          vim.keymap.set({ "n", "t" }, "<C-`>", "<Cmd>Lspsaga term_toggle<CR>", { desc = "Float Terminal" })
-          -- `<Enter> 打开当前文件路径的终端
-          vim.keymap.set({ "n", "t" }, "<C-1>", function()
+          -- 打开当前 cwd 路径的终端
+          vim.keymap.set({ "n" }, "<leader>tt", "<Cmd>Lspsaga term_toggle<CR>", { desc = "Float Terminal" })
+          -- 打开当前文件路径的终端
+          vim.keymap.set({ "n" }, "<leader>t<CR>", function()
             vim.api.nvim_command("Lspsaga term_toggle " .. os.getenv("SHELL") .. " " .. vim.fn.expand("%:p:h"))
           end, { desc = "Float Terminal On Current Buffer Directory" })
+          -- 关闭 特仍面临
+          vim.keymap.set({ "t" }, "<C-q>", "<Cmd>Lspsaga term_toggle<CR>", { desc = "Float Terminal" })
         end,
         dependencies = {
           "kyazdani42/nvim-web-devicons",
