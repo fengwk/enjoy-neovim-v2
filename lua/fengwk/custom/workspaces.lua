@@ -157,10 +157,6 @@ function M.open(ws_root)
 end
 
 function M.auto_record_buffer_enter()
-  if not current_workspace then
-    return
-  end
-
   if vim.bo.buftype ~= "" or vim.fn.bufname("%") == "" then
     return
   end
@@ -175,16 +171,17 @@ function M.auto_record_buffer_enter()
   end
 
   local data = M.read_data()
-  if not data[current_workspace] then
+  if current_workspace and not data[current_workspace] then
     current_workspace = nil
     return
   end
 
   local last_file = utils.normalize_path(file_path)
-  if vim.startswith(last_file, current_workspace) then
+  if current_workspace and vim.startswith(last_file, current_workspace) then
     -- 如果还在当前工作区则记录最后的访问文件
+    local cur_ws = current_workspace
     vim.schedule(function()
-      data[current_workspace] = {
+      data[cur_ws] = {
         last_file = last_file,
       }
       data_cache = data
