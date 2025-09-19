@@ -154,7 +154,7 @@ return {
       mappings = {
         sidebar = {
           close = { "q", "<C-q>" },
-          -- close_from_input = { normal = { "q", "<C-q>" }, insert = "<C-q>" },
+          close_from_input = { normal = { "q", "<C-q>" }, insert = "<C-q>" },
         },
         select_model = "<leader>am",
       },

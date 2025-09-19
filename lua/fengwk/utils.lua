@@ -278,4 +278,23 @@ function utils.normalize_path(path)
   return path
 end
 
+function utils.setup_lsp(server, conf)
+  vim.lsp.config(server, conf)
+  local lsp_conf = vim.lsp.config[server]
+  if lsp_conf and lsp_conf.filetypes and #lsp_conf.filetypes > 0 then
+    local first = true
+    local group = vim.api.nvim_create_augroup("user_enable_lsp_" .. server, { clear = true })
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = lsp_conf.filetypes,
+      group = group,
+      callback = function()
+        if first then
+          vim.lsp.enable(server)
+          first = false
+        end
+      end,
+    })
+  end
+end
+
 return utils

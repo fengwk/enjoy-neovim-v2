@@ -1,5 +1,4 @@
 local jdtls = require "jdtls"
-local lspconfig = require "lspconfig"
 
 local data_path = vim.fn.stdpath("data")
 local config_path = vim.fn.stdpath("config")
@@ -192,7 +191,7 @@ local function build_conf(base_conf, bufnr)
 
   return vim.tbl_extend('force', base_conf, {
     root_dir = root_dir,
-    capabilities = base_conf.capabilities and base_conf.capabilities or lspconfig.make_capabilities(),
+    capabilities = base_conf.capabilities and base_conf.capabilities or vim.lsp.protocol.make_client_capabilities(),
 
     cmd = {
       'env',
@@ -330,7 +329,7 @@ local function setup(base_conf)
   vim.api.nvim_create_autocmd(
     { "FileType" },
     {
-      group = "user_jdtls_setup",
+      group = group,
       pattern = "xml",
       callback = function(args)
         local name = vim.fn.expand("%:t")

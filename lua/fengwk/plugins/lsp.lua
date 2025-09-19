@@ -321,7 +321,6 @@ return {
     config = function()
       local mason = require "mason"
       local mason_lspconfig = require "mason-lspconfig"
-      local lspconfig = require "lspconfig"
 
       mason.setup {
         log_level = vim.log.levels.INFO,
@@ -367,7 +366,7 @@ return {
         if setup then
           setup(conf)
         else
-          lspconfig[server].setup(conf)
+          utils.setup_lsp(server, conf)
         end
       end
 
