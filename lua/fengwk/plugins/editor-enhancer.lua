@@ -1,4 +1,5 @@
 local globals = require "fengwk.globals"
+local utils = require "fengwk.utils"
 
 -- 编辑器增强插件
 return {
@@ -46,6 +47,10 @@ return {
     "lukas-reineke/indent-blankline.nvim",
     event = "VeryLazy",
     config = function()
+      if utils.is_tty() then
+        return
+      end
+
       local ibl = require "ibl"
       -- local highlight = {
       --   "RainbowRed",
