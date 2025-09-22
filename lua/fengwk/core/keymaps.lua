@@ -42,6 +42,10 @@ keymap("n", "<leader>y", "mpggVGy`p", { noremap = true, desc = "Yank Entire Buff
 -- 兼容系统剪贴板的复制
 keymap("x", "<C-c>", "y", { desc = "Yank to System Clipboard" })
 
+-- 单手查找
+keymap('n', '<leader><leader>f', '/<C-R>+<CR>', { noremap = true })
+keymap('n', '<leader><leader>F', '?<C-R>+<CR>', { noremap = true })
+
 -- ==============
 -- == 插入模式 ==
 -- ==============
