@@ -75,6 +75,7 @@ function M.add(ws_root)
   data_cache = data
   write_data()
   vim.notify("Workspace added: " .. ws_root)
+  M.auto_record_buffer_enter()
 end
 
 --- 移除一个工作区
@@ -177,7 +178,7 @@ function M.auto_record_buffer_enter()
   end
 
   local last_file = utils.normalize_path(file_path)
-  if current_workspace and vim.startswith(last_file, current_workspace) then
+  if current_workspace and vim.startswith(last_file, current_workspace .. utils.sp) then
     -- 如果还在当前工作区则记录最后的访问文件
     local cur_ws = current_workspace
     vim.schedule(function()
@@ -190,9 +191,19 @@ function M.auto_record_buffer_enter()
   else
     -- 处理工作区切换
     for root_path, _ in pairs(data) do
-      if vim.startswith(last_file, root_path) then
+      if vim.startswith(last_file, root_path .. utils.sp) then
         if utils.cd(root_path) then
           current_workspace = root_path
+          if vim.startswith(last_file, current_workspace .. utils.sp) then
+            local cur_ws = current_workspace
+            vim.schedule(function()
+              data[cur_ws] = {
+                last_file = last_file,
+              }
+              data_cache = data
+              write_data()
+            end)
+          end
         else
           vim.notify("Workspace '" .. root_path .. "' directory not accessible.", vim.log.levels.WARN)
         end
