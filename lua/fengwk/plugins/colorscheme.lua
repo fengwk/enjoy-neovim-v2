@@ -14,30 +14,18 @@ return {
           shade = require "fengwk.globals".theme.bg,
           percentage = 0.15,
         },
+        lsp_styles = { -- Handles the style of specific lsp hl groups (see `:h lsp-highlight`).
+          underlines = {
+            errors = { "undercurl" },
+            hints = { "undercurl" },
+            warnings = { "undercurl" },
+            information = { "undercurl" },
+            ok = { "undercurl" },
+          },
+        },
         -- https://github.com/catppuccin/nvim#integrations
         integrations = {
           lsp_saga = true,
-          native_lsp = {
-            enabled = true,
-            virtual_text = {
-              errors = { "italic" },
-              hints = { "italic" },
-              warnings = { "italic" },
-              information = { "italic" },
-              ok = { "italic" },
-            },
-            underlines = {
-              errors = { "undercurl" },
-              hints = { "undercurl" },
-              warnings = { "undercurl" },
-              information = { "undercurl" },
-              ok = { "undercurl" },
-            },
-            inlay_hints = {
-              background = true,
-            },
-            diffview = true,
-          },
           indent_blankline = {
             enabled = true,
             scope_color = "",
