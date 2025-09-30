@@ -302,4 +302,19 @@ function utils.setup_lsp(server, conf)
   end
 end
 
+function utils.is_large_buf(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  -- 检查文件大小是否超过阈值
+  local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(bufnr))
+  if ok and stats and stats.size > 1024 * 128 then
+    return true
+  end
+  -- 检查文件行数是否超过阈值
+  local line_count = vim.api.nvim_buf_line_count(bufnr)
+  if line_count and line_count > 10000 then
+    return true
+  end
+  return false
+end
+
 return utils

@@ -1,3 +1,5 @@
+local utils = require "fengwk.utils"
+
 local feedkey = function(key, mode)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, true, true), mode, true)
 end
@@ -99,6 +101,10 @@ return {
           option = {
             -- 可见缓冲区作为 buffer 来源
             get_bufnrs = function()
+              if utils.is_large_buf() then
+                return {}
+              end
+
               local bufs = {}
               for _, win in ipairs(vim.api.nvim_list_wins()) do
                 bufs[vim.api.nvim_win_get_buf(win)] = true
@@ -113,6 +119,10 @@ return {
       },
 
       enabled = function()
+        if utils.is_large_buf() then
+          -- 处理大文件卡死
+          return false
+        end
         return vim.api.nvim_buf_get_option(0, "buftype") ~= "prompt"
             or require("cmp_dap").is_dap_buffer()
       end,
@@ -137,6 +147,10 @@ return {
         { name = "cmdline" },
         { name = "path" },
       },
+      enabled = function()
+        -- 处理大文件卡死
+        return not utils.is_large_buf()
+      end
     })
   end,
   dependencies = {

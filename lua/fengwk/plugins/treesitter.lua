@@ -1,3 +1,5 @@
+local utils = require "fengwk.utils"
+
 -- 依赖 tar curl gcc gcc-c++
 return {
   "nvim-treesitter/nvim-treesitter",
@@ -17,7 +19,7 @@ return {
         enable = true,
         -- 函数返回 true 将关闭高亮
         disable = function()
-          return false
+          return utils.is_large_buf()
         end,
         -- 禁用同时使用 Vim 传统的基于正则表达式的语法高亮和 Tree-sitter 的高亮
         additional_vim_regex_highlighting = false,
