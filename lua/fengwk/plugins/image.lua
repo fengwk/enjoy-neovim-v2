@@ -94,7 +94,9 @@ return {
         show_dir_path_in_prompt = true,
         embed_image_as_base64 = false,
         drag_and_drop = {
-          insert_mode = true,
+          -- 关闭该功能，因为拖拽复制功能会包装 vim.paste 导致每次 URL paste 都需要下载内容，影响非图片 URL paste 性能
+          enabled = false,
+          -- insert_mode = true,
         },
         use_absolute_path = function()
           return false

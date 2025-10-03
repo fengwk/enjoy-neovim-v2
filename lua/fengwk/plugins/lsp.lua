@@ -523,7 +523,7 @@ return {
       "mfussenegger/nvim-dap",
       "jay-babu/mason-nvim-dap.nvim",
       "leoluz/nvim-dap-go",
-      "mfussenegger/nvim-dap-python",
+      -- "mfussenegger/nvim-dap-python",
       {
         "theHamsta/nvim-dap-virtual-text",
         opts = {
