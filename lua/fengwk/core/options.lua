@@ -8,6 +8,10 @@ local globals = require "fengwk.globals"
 -- 历史命令记录条数
 vim.g.history = 200
 
+-- 自动读取文件变更
+-- 和 qwen code 协同编程时很有用
+-- vim.o.autoread = true
+
 -- 悬浮窗口透明度
 vim.o.winblend = globals.theme.winblend
 -- 弹出窗口透明度

@@ -366,9 +366,13 @@ return {
         if setup then
           setup(conf)
         else
-          utils.setup_lsp(server, conf)
+          utils.setup_lsp(server, conf, false)
         end
       end
+
+      vim.keymap.set("n", "<leader>ll", "<Cmd>LspStart<CR>", {})
+      vim.keymap.set("n", "<leader>ls", "<Cmd>LspStop<CR>", {})
+      vim.keymap.set("n", "<leader>lr", "<Cmd>LspRestart<CR>", {})
 
       -- https://github.com/jay-babu/mason-nvim-dap.nvim
       local dap = require "dap"
@@ -511,7 +515,7 @@ return {
           vim.keymap.set({ "n" }, "<leader>t<CR>", function()
             vim.api.nvim_command("Lspsaga term_toggle " .. os.getenv("SHELL") .. " " .. vim.fn.expand("%:p:h"))
           end, { desc = "Float Terminal On Current Buffer Directory" })
-          -- 关闭 特仍面临
+          -- 自动关闭 lsp saga terminal
           vim.keymap.set({ "t" }, "<C-q>", "<Cmd>Lspsaga term_toggle<CR>", { desc = "Float Terminal" })
         end,
         dependencies = {

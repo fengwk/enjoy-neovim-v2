@@ -272,7 +272,7 @@ function M.setup(opts)
     M.add_mark(args.fargs[1])
   end, { nargs = "?", desc = "Add a bookmark, with optional annotation" })
 
-  vim.api.nvim_create_user_command("BookmarkRemove", M.remove_mark, { desc = "Remove the bookmark on the current line" })
+  vim.api.nvim_create_user_command("BookmarkDelete", M.remove_mark, { desc = "Delete the bookmark on the current line" })
 end
 
 return M

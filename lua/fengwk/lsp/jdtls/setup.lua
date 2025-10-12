@@ -1,4 +1,5 @@
 local jdtls = require "jdtls"
+local utils = require "fengwk.utils"
 
 local data_path = vim.fn.stdpath("data")
 local config_path = vim.fn.stdpath("config")
@@ -150,21 +151,7 @@ local function build_runtimes()
   return runtimes
 end
 
-local function build_conf(base_conf, bufnr)
-  bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local current_buf_filename = vim.api.nvim_buf_get_name(bufnr)
-
-  local found = vim.fs.find({
-    "build.xml",           -- Ant
-    "mvnw",                -- Maven
-    "pom.xml",             -- Maven
-    "settings.gradle",     -- Gradle
-    "settings.gradle.kts", -- Gradle
-    "gradlew",             -- Gradle
-  }, { path = current_buf_filename, limit = math.huge, upward = true })
-
-  local root_dir = found and #found > 0 and vim.fs.dirname(found[#found]) or nil
-
+local function build_conf(base_conf)
   local jdtls_cmd = vim.fs.joinpath(jdtls_home, "jdtls")
 
   local bundles = {}
@@ -190,7 +177,23 @@ local function build_conf(base_conf, bufnr)
   });
 
   return vim.tbl_extend('force', base_conf, {
-    root_dir = root_dir,
+    root_dir = function(bufnr, on_dir)
+      local current_buf_filename = vim.api.nvim_buf_get_name(bufnr)
+
+      local found = vim.fs.find({
+        "build.xml",       -- Ant
+        "mvnw",            -- Maven
+        "pom.xml",         -- Maven
+        "settings.gradle", -- Gradle
+        "settings.gradle.kts", -- Gradle
+        "gradlew",         -- Gradle
+      }, { path = current_buf_filename, limit = math.huge, upward = true })
+
+      root_dir= found and #found > 0 and vim.fs.dirname(found[#found]) or nil
+      on_dir(root_dir)
+
+    end,
+    -- root_markers = {},
     capabilities = base_conf.capabilities and base_conf.capabilities or vim.lsp.protocol.make_client_capabilities(),
 
     cmd = {
@@ -198,7 +201,7 @@ local function build_conf(base_conf, bufnr)
       'JAVA_HOME=' .. java_home_preset.java_home_21,
       jdtls_cmd,
       "--jvm-arg=-javaagent:" .. lombok_jar,
-      "--jvm-arg=-Xmx4g",
+      "--jvm-arg=-Xmx3g",
       "--jvm-arg=-XX:+UseZGC",    -- ZGC
       "--jvm-arg=-XX:+ZUncommit", -- 允许将未使用的内存归还给操作系统
     },
@@ -307,38 +310,40 @@ local function build_conf(base_conf, bufnr)
   })
 end
 
-local function setup(base_conf)
-  local function start_or_attach(bufnr)
-    local conf = build_conf(base_conf, bufnr)
-    jdtls.start_or_attach(conf)
-  end
 
-  local group = vim.api.nvim_create_augroup("user_jdtls_setup", { clear = true })
-  -- java or ant 文件启动 jdtls
-  vim.api.nvim_create_autocmd(
-    { "FileType" },
-    {
-      group = group,
-      pattern = "java,ant",
-      callback = function(args)
-        local bufnr = args.buf
-        start_or_attach(bufnr)
-      end
-    })
-  -- pom.xml文件启动jdtls
-  vim.api.nvim_create_autocmd(
-    { "FileType" },
-    {
-      group = group,
-      pattern = "xml",
-      callback = function(args)
-        local name = vim.fn.expand("%:t")
-        if name == "pom.xml" then
-          local bufnr = args.buf
-          start_or_attach(bufnr)
-        end
-      end
-    })
+local function setup(base_conf)
+  utils.setup_lsp("jdtls", build_conf(base_conf), false)
+  -- local function start_or_attach(bufnr)
+  --   local conf = build_conf(base_conf, bufnr)
+  --   jdtls.start_or_attach(conf)
+  -- end
+  --
+  -- local group = vim.api.nvim_create_augroup("user_jdtls_setup", { clear = true })
+  -- -- java or ant 文件启动 jdtls
+  -- vim.api.nvim_create_autocmd(
+  --   { "FileType" },
+  --   {
+  --     group = group,
+  --     pattern = "java,ant",
+  --     callback = function(args)
+  --       local bufnr = args.buf
+  --       start_or_attach(bufnr)
+  --     end
+  --   })
+  -- -- pom.xml文件启动jdtls
+  -- vim.api.nvim_create_autocmd(
+  --   { "FileType" },
+  --   {
+  --     group = group,
+  --     pattern = "xml",
+  --     callback = function(args)
+  --       local name = vim.fn.expand("%:t")
+  --       if name == "pom.xml" then
+  --         local bufnr = args.buf
+  --         start_or_attach(bufnr)
+  --       end
+  --     end
+  --   })
 end
 
 return setup

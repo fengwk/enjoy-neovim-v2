@@ -10,9 +10,7 @@
 -- return setup
 
 -- https://codeberg.org/mfussenegger/nvim-dap/wiki/Debug-Adapter-installation#python
-local function setup(_)
-  local dap = require('dap')
-
+local function setup(dap)
   local stdpath_data = vim.fn.stdpath("data")
   local debugpy_home = vim.fs.joinpath(stdpath_data, "mason", "packages", "debugpy")
   local debugpy_python = vim.fs.joinpath(debugpy_home, "venv", "bin", "python")
