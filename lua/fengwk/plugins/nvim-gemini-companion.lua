@@ -1,9 +1,8 @@
 local globals = require "fengwk.globals"
 
 return {
-  -- "gutsavgupta/nvim-gemini-companion",
-  "fengwk/nvim-gemini-companion",
-  branch = "feat/autoreload",
+  "gutsavgupta/nvim-gemini-companion",
+  branch = "pr-18-auto-reload",
   dependencies = {
     "nvim-lua/plenary.nvim",
   },
@@ -37,12 +36,6 @@ return {
         end
       end,
     })
-
-    -- vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter' }, {
-    --   group = group,
-    --   command = "if mode() != 'c' | checktime | endif",
-    --   pattern = '*',
-    -- })
   end,
   keys = {
     { "<leader>aa", "<Cmd>GeminiToggle<CR>",             desc = "Toggle Gemini CLI" },
