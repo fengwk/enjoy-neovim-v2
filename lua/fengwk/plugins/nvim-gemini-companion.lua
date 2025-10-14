@@ -13,6 +13,7 @@ return {
       cmds = { "qwen" },
     }
 
+
     local group = vim.api.nvim_create_augroup("user_nvim_gemini_companion", { clear = true })
     vim.api.nvim_create_autocmd("FileType", {
       group = group,
@@ -37,49 +38,11 @@ return {
       end,
     })
 
-    -- 自动加载变更文件
-    -- vim.api.nvim_create_autocmd(
-    --   { "FocusGained", "BufEnter", "CursorHold", "CursorHoldI" },
-    --   {
-    --     group = group,
-    --     pattern = "*",
-    --     callback = function()
-    --       -- 如果当前文件可编辑、非特殊类型文件、且可读、且没有修改过，则执行检查是否要重新加载
-    --       if vim.bo.modifiable
-    --         and not globals.is_special_ft(0)
-    --         and vim.fn.filereadable(vim.fn.expand("%")) == 1
-    --         and not vim.bo.modified then
-    --         vim.cmd("checktime")
-    --       end
-    --     end,
-    --     desc = "Auto reload file"
-    --   }
-    -- )
-    --vim.api.nvim_create_autocmd("BufWriteCmd", {
-    --  group = group,
-    --  pattern = "*", -- 监听所有文件
-    --  callback = function(args)
-    --    print("aaaaaa: ", vim.inspect(vim.wo.diff))
-    --    if not vim.wo.diff then
-    --      -- 不是 diff 则不执行任何操作
-    --      return
-    --    end
-
-    --    local file_path = vim.fn.expand(args.file .. ":p")
-    --    print("xxxxxxxxxxxxxxxx: ", vim.inspect(file_path))
-    --    vim.schedule(function()
-    --      -- 遍历所有缓冲区，如果有打开一样路径的文件使用 checktime 刷新一次
-    --      for _, buf_info in ipairs(vim.fn.getbufinfo({ buflisted = true })) do
-    --        local buf_path = vim.fn.expand(buf_info.name .. ":p")
-    --        if buf_path == file_path and buf_info.bufnr ~= args.buf then
-    --          if #buf_info.windows > 0 then
-    --            vim.cmd(buf_info.windows[1] .. "wincmd w | checktime")
-    --          end
-    --        end
-    --      end
-    --    end)
-    --  end,
-    --})
+    -- vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter' }, {
+    --   group = group,
+    --   command = "if mode() != 'c' | checktime | endif",
+    --   pattern = '*',
+    -- })
   end,
   keys = {
     { "<leader>aa", "<Cmd>GeminiToggle<CR>",             desc = "Toggle Gemini CLI" },

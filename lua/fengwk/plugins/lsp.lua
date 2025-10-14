@@ -181,7 +181,7 @@ local function build_lsp_conf(server, capabilities)
       local root_dir = client.root_dir
       if not utils.is_empty_str(root_dir) and utils.is_dir(root_dir) then
         utils.cd(root_dir)
-        workspaces.add(root_dir)
+        -- workspaces.add(root_dir)
       end
 
       -- 使用 telescope 搜索诊断信息
