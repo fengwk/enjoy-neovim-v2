@@ -2,7 +2,6 @@ local globals = require "fengwk.globals"
 
 return {
   "gutsavgupta/nvim-gemini-companion",
-  branch = "pr-18-auto-reload",
   dependencies = {
     "nvim-lua/plenary.nvim",
   },
