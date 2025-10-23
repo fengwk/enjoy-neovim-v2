@@ -8,7 +8,7 @@ return {
   event = "VeryLazy",
   config = function()
     require "gemini".setup {
-      cmds = { "qwen" },
+      cmds = { "gemini", "qwen" },
     }
 
 

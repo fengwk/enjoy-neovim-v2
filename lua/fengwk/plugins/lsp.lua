@@ -366,7 +366,7 @@ return {
         if setup then
           setup(conf)
         else
-          utils.setup_lsp(server, conf, false)
+          utils.setup_lsp(server, conf, true)
         end
       end
 

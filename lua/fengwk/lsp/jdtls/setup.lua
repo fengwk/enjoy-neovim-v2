@@ -312,7 +312,7 @@ end
 
 
 local function setup(base_conf)
-  utils.setup_lsp("jdtls", build_conf(base_conf), false)
+  utils.setup_lsp("jdtls", build_conf(base_conf), true)
   -- local function start_or_attach(bufnr)
   --   local conf = build_conf(base_conf, bufnr)
   --   jdtls.start_or_attach(conf)
