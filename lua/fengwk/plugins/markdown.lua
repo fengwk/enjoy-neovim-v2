@@ -1,23 +1,23 @@
 local globals = require "fengwk.globals"
 
 return {
-  -- {
-  --   -- 依赖 npm
-  --   "iamcco/markdown-preview.nvim",
-  --   cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-  --   keys = {
-  --     { "<leader>mk", "<Cmd>MarkdownPreviewToggle<CR>", mode = "n" },
-  --   },
-  --   build = "cd app && npm install",
-  --   init = function()
-  --     vim.g.mkdp_auto_close = 0
-  --     -- vim.g.mkdp_open_to_the_world = 1 -- bind 0.0.0.0
-  --     vim.g.mkdp_port = 38888
-  --     vim.g.mkdp_theme = gloabls.theme.bg
-  --     vim.g.mkdp_filetypes = globals.markdown_filetypes
-  --   end,
-  --   ft = globals.markdown_filetypes,
-  -- },
+  {
+    -- 依赖 npm typescript
+    "iamcco/markdown-preview.nvim",
+    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+    build = "cd app && yarn install",
+    init = function()
+      vim.g.mkdp_auto_close = 0
+      -- vim.g.mkdp_open_to_the_world = 1 -- bind 0.0.0.0
+      vim.g.mkdp_port = 38888
+      vim.g.mkdp_open_ip = "127.0.0.1" -- 公司的安全软件会禁用 localhost
+      vim.g.mkdp_theme = globals.theme.bg
+      vim.g.mkdp_filetypes = globals.markdown_filetypes
+
+      vim.keymap.set("n", "<leader>mk", "<Cmd>MarkdownPreviewToggle<CR>", { silent = true, buffer = 0 })
+    end,
+    ft = globals.markdown_filetypes,
+  },
   {
     "MeanderingProgrammer/render-markdown.nvim",
     opts = {

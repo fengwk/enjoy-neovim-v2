@@ -203,4 +203,19 @@ return {
       vim.api.nvim_create_user_command("VennToggle", toggle_venn, {})
     end
   },
+  {
+    'nvim-mini/mini.map',
+    version = '*',
+    event = "VeryLazy",
+    config = function()
+      local MiniMap = require "mini.map"
+      MiniMap.setup {
+        window = {
+          width = 1, -- 仅保留滚动条
+          winblend = globals.theme.winblend,
+        },
+      }
+      MiniMap.open()
+    end
+  },
 }
