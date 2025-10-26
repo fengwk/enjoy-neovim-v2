@@ -5,7 +5,7 @@ return {
     -- 依赖 npm typescript
     "iamcco/markdown-preview.nvim",
     cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-    build = "cd app && yarn install",
+    build = "cd app && npm install",
     init = function()
       vim.g.mkdp_auto_close = 0
       -- vim.g.mkdp_open_to_the_world = 1 -- bind 0.0.0.0
