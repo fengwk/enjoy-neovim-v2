@@ -204,18 +204,14 @@ return {
     end
   },
   {
-    'nvim-mini/mini.map',
-    version = '*',
+    -- https://github.com/lewis6991/satellite.nvim
+    -- 滚动条+高亮(search diagnostic gitsigns marks quickfix)
+    "lewis6991/satellite.nvim",
     event = "VeryLazy",
     config = function()
-      local MiniMap = require "mini.map"
-      MiniMap.setup {
-        window = {
-          width = 1, -- 仅保留滚动条
-          winblend = globals.theme.winblend,
-        },
+      require "satellite".setup {
+        -- current_only = true,
       }
-      MiniMap.open()
     end
   },
 }
