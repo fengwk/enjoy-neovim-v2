@@ -14,7 +14,7 @@ local lsp_pkgs = {
   utils.has_cmd("gcc") and not is_arm() and "clangd" or nil,                      -- c cpp
   utils.has_cmd("npm") and "cssls" or nil,                                        -- css less scss
   utils.has_cmd("go") and "gopls" or nil,                                         -- go
-  (utils.has_cmd("java") or os.getenv("JAVA_HOME") ~= nil) and "groovyls" or nil, -- groovy
+  -- (utils.has_cmd("java") or os.getenv("JAVA_HOME") ~= nil) and "groovyls" or nil, -- groovy
   "lua_ls" or nil,                                                                -- lua
   "pylsp" or nil,                                                                 -- python
   utils.has_cmd("npm") and "ts_ls" or nil,                                        -- js ts
