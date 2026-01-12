@@ -82,9 +82,6 @@ The configuration uses Space (`<Space>`) as the leader key and Local Leader key.
 | Keybinding | Mode | Description |
 |------------|------|-------------|
 | `jk` | Insert | Exit to normal mode |
-| `JK` | Insert | Exit to normal mode (Shift delay) |
-| `Jk` | Insert | Exit to normal mode (Shift delay) |
-| `<C-j><C-k>` | Visual/Cmdline/Terminal | Exit to normal mode |
 
 #### LSP Keybindings
 | Keybinding | Mode | Description |

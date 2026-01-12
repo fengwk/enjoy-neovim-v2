@@ -361,7 +361,7 @@ return {
       end
 
 
-      local capabilities = require "cmp_nvim_lsp".default_capabilities()
+      local capabilities = require "blink.cmp".get_lsp_capabilities()
       local servers = mason_lspconfig.get_installed_servers()
       for _, server in ipairs(servers) do
         local conf = build_lsp_conf(server, capabilities)
@@ -416,7 +416,7 @@ return {
     dependencies = {
       "neovim/nvim-lspconfig",
       "mason-org/mason-lspconfig.nvim",
-      "hrsh7th/cmp-nvim-lsp",    -- 补全依赖项
+      "saghen/blink.cmp",    -- 补全依赖项
       "mfussenegger/nvim-jdtls", -- java
       {
         "nvimdev/lspsaga.nvim",

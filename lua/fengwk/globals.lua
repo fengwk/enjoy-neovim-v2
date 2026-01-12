@@ -21,7 +21,7 @@ local special_fts = {
   "gitcommit",         -- Git 提交信息
   "gitrebase",         -- Git Rebase
   "diff",              -- Diff 模式
-  "cmp_menu",          -- nvim-cmp 补全菜单
+  "blink-cmp-menu",    -- blink.cmp 补全菜单
   "lazy",              -- Lazy
   "mason",             -- Mason
 }

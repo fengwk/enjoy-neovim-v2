@@ -52,11 +52,12 @@ keymap('n', '<leader><leader>F', '?<C-R>+<CR>', { noremap = true })
 
 -- 使用 "jk" 快速从插入模式返回普通模式
 keymap({ "i" }, "jk", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode" })
-keymap({ "i" }, "JK", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode (Shift Delay)" })
-keymap({ "i" }, "Jk", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode (Shift Delay)" })
+-- keymap({ "i" }, "JK", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode (Shift Delay)" })
+-- keymap({ "i" }, "Jk", "<Esc>", { noremap = true, desc = "Insert Mode to Normal Mode (Shift Delay)" })
 
 -- 在可视、命令行、终端模式下快速返回普通模式
-keymap({ "v", "c", "t" }, "<C-j><C-k>", "<Esc>", { noremap = true, desc = "Exit Modes to Normal Mode" })
+-- 这个快捷键和补全快捷键冲突因此不再使用
+-- keymap({ "v", "c", "t" }, "<C-j><C-k>", "<Esc>", { noremap = true, desc = "Exit Modes to Normal Mode" })
 
 -- ========================
 -- == 功能性快捷键与重写 ==
