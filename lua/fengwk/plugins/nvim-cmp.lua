@@ -1,4 +1,5 @@
 local utils = require "fengwk.utils"
+local globals = require "fengwk.globals"
 
 local feedkey = function(key, mode)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, true, true), mode, true)
@@ -128,8 +129,8 @@ return {
       end,
 
       window = {
-        completion = cmp.config.window.bordered(),
-        documentation = cmp.config.window.bordered(),
+        completion = cmp.config.window.bordered({ border = globals.theme.border }),
+        documentation = cmp.config.window.bordered({ border = globals.theme.border }),
       },
     }
 

@@ -211,6 +211,11 @@ return {
     config = function()
       require "satellite".setup {
         -- current_only = true,
+        -- handlers = {
+        --   gitsigns = {
+        --     enable = false,  -- 禁用 gitsigns 处理器避免与 opencode diff 冲突
+        --   },
+        -- },
       }
     end
   },

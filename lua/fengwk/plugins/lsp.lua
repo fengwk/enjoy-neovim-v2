@@ -324,6 +324,9 @@ return {
 
       mason.setup {
         log_level = vim.log.levels.INFO,
+        ui = {
+          border = globals.theme.border,
+        },
       }
 
       -- mason wrap

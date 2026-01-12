@@ -1,3 +1,5 @@
+local globals = require "fengwk.globals"
+
 -- https://lazy.folke.io/installation
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -26,4 +28,7 @@ require("lazy").setup({
   install = { colorscheme = { "catppuccin" } },
   -- 自动检查插件更新
   checker = { enabled = false },
+  ui = {
+    border = globals.theme.border,
+  },
 })

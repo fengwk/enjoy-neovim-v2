@@ -49,6 +49,8 @@ globals.markdown_filetypes = {
   "markdown",
   "vimwiki",
   "Avante",
+  'copilot-chat',
+  'opencode_output',
 }
 
 return globals

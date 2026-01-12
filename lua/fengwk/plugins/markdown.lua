@@ -20,6 +20,7 @@ return {
   },
   {
     "MeanderingProgrammer/render-markdown.nvim",
+    ft = globals.markdown_filetypes, -- 仅在 markdown 文件类型时加载
     opts = {
       file_types = globals.markdown_filetypes,
       -- https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/177
