@@ -151,57 +151,36 @@ local function build_runtimes()
   return runtimes
 end
 
---- Count Java files in a directory to estimate project size
+local skip_dirs = {
+  ["node_modules"] = true, ["target"] = true, ["build"] = true,
+  [".git"] = true, [".gradle"] = true, [".idea"] = true,
+  ["bin"] = true, ["out"] = true,
+}
+
+--- Count Java files in a directory (max 2000, depth 15)
 --- @param root_dir string
 --- @return number
 local function count_java_files(root_dir)
-  if not root_dir or root_dir == "" then
-    return 0
-  end
+  if not root_dir or root_dir == "" then return 0 end
 
-  local count = 0
-  local max_scan = 2000  -- Stop counting at threshold
-  local max_depth = 15
-
-  -- Directories to skip
-  local skip_dirs = {
-    ["node_modules"] = true,
-    ["target"] = true,
-    ["build"] = true,
-    [".git"] = true,
-    [".gradle"] = true,
-    [".idea"] = true,
-    ["bin"] = true,
-    ["out"] = true,
-  }
-
-  local function scan_dir(dir, depth)
-    if depth > max_depth or count >= max_scan then
-      return
-    end
-
-    local handle = vim.loop.fs_scandir(dir)
-    if not handle then
-      return
-    end
-
-    while count < max_scan do
-      local name, type = vim.loop.fs_scandir_next(handle)
-      if not name then
-        break
-      end
-
-      if type == "directory" then
-        if not skip_dirs[name] then
-          scan_dir(vim.fs.joinpath(dir, name), depth + 1)
+  local count, stack = 0, { { root_dir, 0 } }
+  while #stack > 0 and count < 2000 do
+    local dir, depth = unpack(table.remove(stack))
+    if depth <= 15 then
+      local handle = vim.loop.fs_scandir(dir)
+      if handle then
+        while count < 2000 do
+          local name, ftype = vim.loop.fs_scandir_next(handle)
+          if not name then break end
+          if ftype == "directory" and not skip_dirs[name] then
+            table.insert(stack, { vim.fs.joinpath(dir, name), depth + 1 })
+          elseif ftype == "file" and name:match("%.java$") then
+            count = count + 1
+          end
         end
-      elseif type == "file" and name:match("%.java$") then
-        count = count + 1
       end
     end
   end
-
-  scan_dir(root_dir, 0)
   return count
 end
 
@@ -257,11 +236,10 @@ local function build_conf(base_conf)
     "gradlew",             -- Gradle
   }
 
-  -- Find project root and estimate heap size
+  -- Find project root (heap size is calculated lazily in cmd function)
   local current_buf_filename = vim.api.nvim_buf_get_name(0)
   local found = vim.fs.find(root_markers, { path = current_buf_filename, limit = math.huge, upward = true })
   local project_root = found and #found > 0 and vim.fs.dirname(found[#found]) or vim.fn.getcwd()
-  local heap_size = estimate_heap_size(project_root)
 
   return vim.tbl_extend('force', base_conf, {
     root_dir = function(bufnr, on_dir)
@@ -273,15 +251,19 @@ local function build_conf(base_conf)
 
     capabilities = base_conf.capabilities and base_conf.capabilities or vim.lsp.protocol.make_client_capabilities(),
 
-    cmd = {
-      'env',
-      'JAVA_HOME=' .. java_home_preset.java_home_21,
-      jdtls_cmd,
-      "--jvm-arg=-javaagent:" .. lombok_jar,
-      "--jvm-arg=-Xmx" .. heap_size,
-      "--jvm-arg=-XX:+UseZGC",
-      "--jvm-arg=-XX:+ZUncommit",
-    },
+    cmd = function()
+      -- 延迟计算 heap_size，只在 jdtls 真正启动时执行
+      local heap_size = estimate_heap_size(project_root)
+      return {
+        'env',
+        'JAVA_HOME=' .. java_home_preset.java_home_21,
+        jdtls_cmd,
+        "--jvm-arg=-javaagent:" .. lombok_jar,
+        "--jvm-arg=-Xmx" .. heap_size,
+        "--jvm-arg=-XX:+UseZGC",
+        "--jvm-arg=-XX:+ZUncommit",
+      }
+    end,
 
     on_attach = function(client, bufnr)
       if base_conf and base_conf.on_attach then
