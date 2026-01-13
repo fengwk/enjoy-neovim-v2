@@ -151,6 +151,77 @@ local function build_runtimes()
   return runtimes
 end
 
+--- Count Java files in a directory to estimate project size
+--- @param root_dir string
+--- @return number
+local function count_java_files(root_dir)
+  if not root_dir or root_dir == "" then
+    return 0
+  end
+
+  local count = 0
+  local max_scan = 2000  -- Stop counting at threshold
+  local max_depth = 15
+
+  -- Directories to skip
+  local skip_dirs = {
+    ["node_modules"] = true,
+    ["target"] = true,
+    ["build"] = true,
+    [".git"] = true,
+    [".gradle"] = true,
+    [".idea"] = true,
+    ["bin"] = true,
+    ["out"] = true,
+  }
+
+  local function scan_dir(dir, depth)
+    if depth > max_depth or count >= max_scan then
+      return
+    end
+
+    local handle = vim.loop.fs_scandir(dir)
+    if not handle then
+      return
+    end
+
+    while count < max_scan do
+      local name, type = vim.loop.fs_scandir_next(handle)
+      if not name then
+        break
+      end
+
+      if type == "directory" then
+        if not skip_dirs[name] then
+          scan_dir(vim.fs.joinpath(dir, name), depth + 1)
+        end
+      elseif type == "file" and name:match("%.java$") then
+        count = count + 1
+      end
+    end
+  end
+
+  scan_dir(root_dir, 0)
+  return count
+end
+
+--- Estimate JVM heap size based on project size
+--- @param root_dir string
+--- @return string heap size (e.g., "1g", "2g", "3g", "4g")
+local function estimate_heap_size(root_dir)
+  local java_file_count = count_java_files(root_dir)
+
+  if java_file_count < 100 then
+    return "1g"
+  elseif java_file_count < 1000 then
+    return "2g"
+  elseif java_file_count < 2000 then
+    return "3g"
+  else
+    return "4g"
+  end
+end
+
 local function build_conf(base_conf)
   local jdtls_cmd = vim.fs.joinpath(jdtls_home, "jdtls")
 
@@ -176,24 +247,30 @@ local function build_conf(base_conf)
     resolveAdditionalTextEditsSupport = true,
   });
 
+  -- Project root markers
+  local root_markers = {
+    "build.xml",           -- Ant
+    "mvnw",                -- Maven
+    "pom.xml",             -- Maven
+    "settings.gradle",     -- Gradle
+    "settings.gradle.kts", -- Gradle
+    "gradlew",             -- Gradle
+  }
+
+  -- Find project root and estimate heap size
+  local current_buf_filename = vim.api.nvim_buf_get_name(0)
+  local found = vim.fs.find(root_markers, { path = current_buf_filename, limit = math.huge, upward = true })
+  local project_root = found and #found > 0 and vim.fs.dirname(found[#found]) or vim.fn.getcwd()
+  local heap_size = estimate_heap_size(project_root)
+
   return vim.tbl_extend('force', base_conf, {
     root_dir = function(bufnr, on_dir)
-      local current_buf_filename = vim.api.nvim_buf_get_name(bufnr)
-
-      local found = vim.fs.find({
-        "build.xml",       -- Ant
-        "mvnw",            -- Maven
-        "pom.xml",         -- Maven
-        "settings.gradle", -- Gradle
-        "settings.gradle.kts", -- Gradle
-        "gradlew",         -- Gradle
-      }, { path = current_buf_filename, limit = math.huge, upward = true })
-
-      root_dir= found and #found > 0 and vim.fs.dirname(found[#found]) or nil
-      on_dir(root_dir)
-
+      local buf_filename = vim.api.nvim_buf_get_name(bufnr)
+      local markers = vim.fs.find(root_markers, { path = buf_filename, limit = math.huge, upward = true })
+      local root = markers and #markers > 0 and vim.fs.dirname(markers[#markers]) or nil
+      on_dir(root)
     end,
-    -- root_markers = {},
+
     capabilities = base_conf.capabilities and base_conf.capabilities or vim.lsp.protocol.make_client_capabilities(),
 
     cmd = {
@@ -201,9 +278,9 @@ local function build_conf(base_conf)
       'JAVA_HOME=' .. java_home_preset.java_home_21,
       jdtls_cmd,
       "--jvm-arg=-javaagent:" .. lombok_jar,
-      "--jvm-arg=-Xmx3g",
-      "--jvm-arg=-XX:+UseZGC",    -- ZGC
-      "--jvm-arg=-XX:+ZUncommit", -- 允许将未使用的内存归还给操作系统
+      "--jvm-arg=-Xmx" .. heap_size,
+      "--jvm-arg=-XX:+UseZGC",
+      "--jvm-arg=-XX:+ZUncommit",
     },
 
     on_attach = function(client, bufnr)

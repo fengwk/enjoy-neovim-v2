@@ -51,7 +51,7 @@ return {
 
       -- 确认补全
       ["<Tab>"] = { "select_and_accept", "fallback" },
-      ["<CR>"] = { "select_and_accept", "fallback" },
+      -- ["<CR>"] = { "select_and_accept", "fallback" },
 
       -- 手动触发或隐藏补全
       ["<C-n>"] = { "show", "fallback" },
@@ -137,7 +137,6 @@ return {
         ["<C-j>"] = { "select_next", "fallback" },
         ["<C-k>"] = { "select_prev", "fallback" },
         ["<Tab>"] = { "select_and_accept", "fallback" }, -- 使用 select_and_accept 避免插入模式错误
-        ["<CR>"] = { "select_and_accept", "fallback" },
         ["<C-n>"] = { "show", "fallback" },
         ["<C-c>"] = { "hide", "fallback" },
       },
