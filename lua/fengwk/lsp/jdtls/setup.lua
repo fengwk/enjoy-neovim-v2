@@ -236,11 +236,6 @@ local function build_conf(base_conf)
     "gradlew",             -- Gradle
   }
 
-  -- Find project root (heap size is calculated lazily in cmd function)
-  local current_buf_filename = vim.api.nvim_buf_get_name(0)
-  local found = vim.fs.find(root_markers, { path = current_buf_filename, limit = math.huge, upward = true })
-  local project_root = found and #found > 0 and vim.fs.dirname(found[#found]) or vim.fn.getcwd()
-
   return vim.tbl_extend('force', base_conf, {
     root_dir = function(bufnr, on_dir)
       local buf_filename = vim.api.nvim_buf_get_name(bufnr)
@@ -251,10 +246,12 @@ local function build_conf(base_conf)
 
     capabilities = base_conf.capabilities and base_conf.capabilities or vim.lsp.protocol.make_client_capabilities(),
 
-    cmd = function()
-      -- 延迟计算 heap_size，只在 jdtls 真正启动时执行
-      local heap_size = estimate_heap_size(project_root)
-      return {
+    -- Neovim 0.11+ cmd 函数需要返回 RPC 客户端对象
+    cmd = function(dispatchers, config)
+      -- 在启动时计算 root 和 heap_size
+      local root = config.root_dir or vim.fn.getcwd()
+      local heap_size = estimate_heap_size(root)
+      local cmd_array = {
         'env',
         'JAVA_HOME=' .. java_home_preset.java_home_21,
         jdtls_cmd,
@@ -263,6 +260,11 @@ local function build_conf(base_conf)
         "--jvm-arg=-XX:+UseZGC",
         "--jvm-arg=-XX:+ZUncommit",
       }
+      return vim.lsp.rpc.start(cmd_array, dispatchers, {
+        cwd = config.cmd_cwd,
+        env = config.cmd_env,
+        detached = config.detached,
+      })
     end,
 
     on_attach = function(client, bufnr)
