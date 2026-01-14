@@ -143,6 +143,7 @@ return {
       completion = {
         menu = { auto_show = true }, -- 自动显示补全菜单
       },
+      sources = { "cmdline", "path" }, -- 命令行模式不使用 buffer 补全
     },
 
     -- 模糊匹配器（优先使用 Rust 实现以获得更好的性能和容错性）
