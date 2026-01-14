@@ -19,7 +19,7 @@ end
 local function format_messages(messages)
   local result = {}
   local spinners = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
-  local ms = vim.loop.hrtime() / 1000000
+  local ms = vim.uv.hrtime() / 1000000
   local frame = math.floor(ms / 120) % #spinners
   local i = 1
   for _, message in pairs(messages) do

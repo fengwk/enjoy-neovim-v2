@@ -42,7 +42,7 @@ local Fcitx5State = {
 
 -- 读取当前的 fcitx5 状态 (带缓存)
 local function read_fcitx5_state()
-  local cur_nanos = vim.loop.hrtime()
+  local cur_nanos = vim.uv.hrtime()
   if fcitx5_state_cache and (cur_nanos < fcitx5_state_cache_last_read + state_cache_timeout_ns) then
     return fcitx5_state_cache
   end
@@ -90,7 +90,7 @@ local function auto_switch_pinyin(mode)
   end
 
   if mode == "in" then -- 进入插入模式
-    local state = utils.fs.read_file(state_filename)
+    local state = utils.read_file(state_filename)
     if state == "zh" then -- 如果之前的状态是中文，则恢复
       local cmd = { table.unpack(cmd_base) }
       table.insert(cmd, "zh")
@@ -102,7 +102,7 @@ local function auto_switch_pinyin(mode)
     table.insert(cmd, "en")
     local state = utils.system(cmd)
     -- 将之前的状态保存到缓存文件
-    utils.fs.write_file(state_filename, state)
+    utils.write_file(state_filename, state)
   end
 end
 

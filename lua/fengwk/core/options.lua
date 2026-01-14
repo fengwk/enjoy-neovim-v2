@@ -2,8 +2,8 @@
 --
 -- 本模块用于设置 Neovim 的核心选项 (vim.o) 和全局变量 (vim.g)。
 
-local utils = require "fengwk.utils"
 local globals = require "fengwk.globals"
+local utils = require "fengwk.utils"
 
 -- 历史命令记录条数
 vim.g.history = 200

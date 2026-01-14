@@ -1,6 +1,5 @@
 local globals = require "fengwk.globals"
 local utils = require "fengwk.utils"
-local workspaces = require "fengwk.custom.workspaces"
 
 local function is_arm()
   local sys_arch = utils.system "uname -m" or ""
@@ -15,11 +14,11 @@ local lsp_pkgs = {
   utils.has_cmd("npm") and "cssls" or nil,                                        -- css less scss
   utils.has_cmd("go") and "gopls" or nil,                                         -- go
   -- (utils.has_cmd("java") or os.getenv("JAVA_HOME") ~= nil) and "groovyls" or nil, -- groovy
-  "lua_ls" or nil,                                                                -- lua
-  "pylsp" or nil,                                                                 -- python
+  "lua_ls",                                                                       -- lua
+  "pylsp",                                                                        -- python
   utils.has_cmd("npm") and "ts_ls" or nil,                                        -- js ts
   utils.has_cmd("npm") and "eslint" or nil,                                       -- eslint
-  "jdtls" or nil,                                                                 -- java
+  "jdtls",                                                                        -- java
 }
 
 -- 定义所有要安装的 dap
@@ -52,14 +51,14 @@ local function bind_lsp_keymaps(bufnr)
   keymap("n", "<leader>ca", vim.lsp.buf.code_action,
     { noremap = true, silent = true, buffer = bufnr, desc = "Lsp Code Action" })
   keymap("v", "<leader>ca", function()
-    local range = get_range();
+    local range = get_range()
     vim.api.nvim_input("<Esc>")
     vim.lsp.buf.code_action({ range = range })
   end, { noremap = true, silent = true, buffer = bufnr, desc = "Lsp Range Code Action" })
   keymap("n", "<leader>fm", function() vim.lsp.buf.format({ async = true }) end,
     { noremap = true, silent = true, buffer = bufnr, desc = "Lsp Formatting" })
   keymap("v", "<leader>fm", function()
-    local range = get_range();
+    local range = get_range()
     vim.api.nvim_input("<Esc>")
     vim.lsp.buf.format({ range = range, async = true })
   end, { noremap = true, silent = true, buffer = bufnr, desc = "Lsp Range Formatting" })
@@ -181,7 +180,6 @@ local function build_lsp_conf(server, capabilities)
       local root_dir = client.root_dir
       if not utils.is_empty_str(root_dir) and utils.is_dir(root_dir) then
         utils.cd(root_dir)
-        -- workspaces.add(root_dir)
       end
 
       -- 使用 telescope 搜索诊断信息
@@ -306,7 +304,7 @@ local function register_lsp_destruction()
         if args and args.buf and args.buf > 0 then
           local closeableClients = get_closeable_lsp_clients(args.buf)
           for _, c in ipairs(closeableClients) do
-            close_client(c);
+            close_client(c)
           end
         end
       end

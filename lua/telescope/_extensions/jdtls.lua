@@ -1,4 +1,3 @@
-local utils = require("telescope._extensions.utils")
 local pickers = require "telescope.pickers"
 local finders = require "telescope.finders"
 local conf = require("telescope.config").values
@@ -115,23 +114,6 @@ local function setup_ui()
   jdtls_ui.pick_one = enhance_pick_one(jdtls_ui.pick_one)
   jdtls_ui.pick_many = enhance_pick_many(jdtls_ui.pick_many)
 end
-
--- local enable_auto_organize_imports = false
--- local function setup_auto_organize_imports()
---   local jdtls = require("jdtls")
---   local command = "java.action.organizeImports.chooseImports"
---   -- 存在问题，如果没有需要选择则无法清理当次的enable_auto_organize_imports
---   local origin_java_choose_imports = jdtls.commands[command]
---   local java_choose_imports = function(...)
---     if enable_auto_organize_imports then
---       enable_auto_organize_imports = false
---       return {}
---     end
---     return origin_java_choose_imports(...)
---   end
---   jdtls.commands[command] = java_choose_imports
---   vim.lsp.commands[command] = java_choose_imports
--- end
 
 local function select_client(bufnr)
   local candidates = vim.lsp.get_clients({ name = "jdtls", bufnr = bufnr })
@@ -296,7 +278,6 @@ return require("telescope").register_extension({
       setup_opts = opts[1]
     end
     setup_ui()
-    -- setup_auto_organize_imports()
   end,
   exports = {
     inherited_members = inherited_members,

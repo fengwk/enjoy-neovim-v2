@@ -30,7 +30,7 @@ local special_fts = {
 -- @param bufnr number 缓冲区编号。
 -- @return boolean 如果是特殊文件类型，则返回 true，否则返回 false。
 function globals.is_special_ft(bufnr)
-  local ft = vim.api.nvim_buf_get_option(bufnr or 0, "filetype")
+  local ft = vim.bo[bufnr or 0].filetype
   return vim.tbl_contains(special_fts, ft)
 end
 

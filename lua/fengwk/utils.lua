@@ -6,7 +6,7 @@ local globals = require "fengwk.globals"
 
 local utils = {}
 
-local sysname = string.lower(vim.loop.os_uname().sysname)
+local sysname = string.lower(vim.uv.os_uname().sysname)
 if string.find(sysname, "windows") ~= nil then
   utils.os = "win"
 elseif string.find(sysname, "linux") ~= nil then
@@ -90,9 +90,9 @@ function utils.cd(cwd)
   end
 
   -- 将 vim 根路径定位到 cwd
-  local cd_ok;
+  local cd_ok
   if vim.fn.getcwd() == cwd then
-    cd_ok = true;
+    cd_ok = true
   else
     cd_ok, _ = pcall(vim.cmd, "cd " .. cwd)
   end
@@ -247,14 +247,14 @@ end
 
 -- 检查文件是否存在
 function utils.exists(filename)
-  return filename and vim.loop.fs_stat(filename) ~= nil
+  return filename and vim.uv.fs_stat(filename) ~= nil
 end
 
 function utils.is_dir(path)
   if not path then
     return false
   end
-  local stat = vim.loop.fs_stat(path)
+  local stat = vim.uv.fs_stat(path)
   if stat and stat.type == "directory" then
     return true
   end
@@ -305,7 +305,7 @@ end
 function utils.is_large_buf(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   -- 检查文件大小是否超过阈值
-  local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(bufnr))
+  local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(bufnr))
   if ok and stats and stats.size > 1024 * 128 then
     return true
   end

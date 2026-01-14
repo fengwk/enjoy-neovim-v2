@@ -5,7 +5,7 @@ local function jump_to_jdt_location(uri)
     return
   end
 
-  if not utils.fs.is_uri(uri) then
+  if not utils.is_uri(uri) then
     uri = vim.uri_from_fname(uri)
   end
 

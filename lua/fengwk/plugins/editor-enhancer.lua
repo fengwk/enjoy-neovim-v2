@@ -52,20 +52,8 @@ return {
       end
 
       local ibl = require "ibl"
-      -- local highlight = {
-      --   "RainbowRed",
-      --   "RainbowYellow",
-      --   "RainbowBlue",
-      --   "RainbowOrange",
-      --   "RainbowGreen",
-      --   "RainbowViolet",
-      --   "RainbowCyan",
-      -- }
       ibl.setup {
-        -- 是否启用作用域高亮显示
         scope = { enabled = true },
-        -- 多色缩进竖条
-        -- indent = { highlight = highlight },
       }
     end,
     dependencies = { "nvim-treesitter/nvim-treesitter" },
@@ -208,15 +196,6 @@ return {
     -- 滚动条+高亮(search diagnostic gitsigns marks quickfix)
     "lewis6991/satellite.nvim",
     event = "VeryLazy",
-    config = function()
-      require "satellite".setup {
-        -- current_only = true,
-        -- handlers = {
-        --   gitsigns = {
-        --     enable = false,  -- 禁用 gitsigns 处理器避免与 opencode diff 冲突
-        --   },
-        -- },
-      }
-    end
+    opts = {}
   },
 }

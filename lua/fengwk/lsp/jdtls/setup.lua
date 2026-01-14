@@ -167,10 +167,10 @@ local function count_java_files(root_dir)
   while #stack > 0 and count < 2000 do
     local dir, depth = unpack(table.remove(stack))
     if depth <= 15 then
-      local handle = vim.loop.fs_scandir(dir)
+      local handle = vim.uv.fs_scandir(dir)
       if handle then
         while count < 2000 do
-          local name, ftype = vim.loop.fs_scandir_next(handle)
+          local name, ftype = vim.uv.fs_scandir_next(handle)
           if not name then break end
           if ftype == "directory" and not skip_dirs[name] then
             table.insert(stack, { vim.fs.joinpath(dir, name), depth + 1 })
@@ -224,7 +224,7 @@ local function build_conf(base_conf)
 
   local extendedClientCapabilities = vim.tbl_extend("force", jdtls.extendedClientCapabilities, {
     resolveAdditionalTextEditsSupport = true,
-  });
+  })
 
   -- Project root markers
   local root_markers = {
@@ -374,37 +374,6 @@ end
 
 local function setup(base_conf)
   utils.setup_lsp("jdtls", build_conf(base_conf), true)
-  -- local function start_or_attach(bufnr)
-  --   local conf = build_conf(base_conf, bufnr)
-  --   jdtls.start_or_attach(conf)
-  -- end
-  --
-  -- local group = vim.api.nvim_create_augroup("user_jdtls_setup", { clear = true })
-  -- -- java or ant 文件启动 jdtls
-  -- vim.api.nvim_create_autocmd(
-  --   { "FileType" },
-  --   {
-  --     group = group,
-  --     pattern = "java,ant",
-  --     callback = function(args)
-  --       local bufnr = args.buf
-  --       start_or_attach(bufnr)
-  --     end
-  --   })
-  -- -- pom.xml文件启动jdtls
-  -- vim.api.nvim_create_autocmd(
-  --   { "FileType" },
-  --   {
-  --     group = group,
-  --     pattern = "xml",
-  --     callback = function(args)
-  --       local name = vim.fn.expand("%:t")
-  --       if name == "pom.xml" then
-  --         local bufnr = args.buf
-  --         start_or_attach(bufnr)
-  --       end
-  --     end
-  --   })
 end
 
 return setup
