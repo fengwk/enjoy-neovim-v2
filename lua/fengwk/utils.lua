@@ -177,7 +177,7 @@ function utils.update_title()
   end
   local cwd = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
   -- 构建标题并直接赋值给 Neovim 的 titlestring 选项
-  local title = "nvim ~ " .. cwd .. filename
+  local title = "nvim - " .. cwd .. filename
   set_title(title)
 end
 
