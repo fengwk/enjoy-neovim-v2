@@ -183,12 +183,12 @@ end
 
 function utils.reset_title()
   if is_in_tmux then
-    -- 在 tmux 中，恢复为 shell 名称，这和您之前的逻辑类似
+    -- 在 tmux 中，恢复为 shell 名称
     local pwd = os.getenv('PWD') or ""
     local shell = os.getenv('SHELL') or "sh"
     shell = string.match(shell, "[^/]+$") or "shell"
     local dir = string.match(pwd, '.*/(.*)') or ""
-    set_title(shell .. " ~ " .. dir)
+    set_title(shell .. " - " .. dir)
   else
     -- 在普通终端中，清空 titlestring 即可让终端恢复默认标题
     set_title("")
