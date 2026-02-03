@@ -339,15 +339,15 @@
     "confignotify": {
         "prefix": "confignotify",
         "body": [
-            "private volatile ${2:type} ${1:field};",
+            "private volatile ${1:type} ${2:field};",
             "",
-            "@ConfigNotify(\"$TM_FILENAME_BASE.$1\")",
-            "public void $1Notify(String json) {",
+            "@ConfigNotify(\"$TM_FILENAME_BASE.$2\")",
+            "public void change${2/(.*)/${1:/capitalize}/}(String json) {",
             "\ttry {",
-            "\t\tthis.$1 = JSON.parseObject(json, ${3:$2});",
-            "\t\tlog.info(\"change $1 success, json={}\", json);",
+            "\t\tthis.$2 = JSON.parseObject(json, ${3:$1.class});",
+            "\t\tlog.info(\"change $2 success, json={}\", json);",
             "\t} catch (Exception ex) {",
-            "\t\tlog.error(\"change $1 failed, json={}\", json, ex);",
+            "\t\tlog.error(\"change $2 error, json={}\", json, ex);",
             "\t}",
             "}$0"
         ],
@@ -356,8 +356,8 @@
     "configitem": {
         "prefix": "configitem",
         "body": [
-            "@Item(value = \"$TM_FILENAME_BASE.$1\", ignoreMiss = true)",
-            "public volatile ${2:type} ${1:field};$0"
+            "@Item(value = \"$TM_FILENAME_BASE.$2\", ignoreMiss = true)",
+            "public volatile ${1:type} ${2:field};$0"
         ],
         "description": "@Configitem"
     }

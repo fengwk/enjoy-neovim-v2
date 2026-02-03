@@ -189,6 +189,20 @@ Leader 键: `Space` (空格)
 | `<leader>fd` | 诊断信息 |
 | `[d`/`]d` | 上一个/下一个诊断 |
 
+### 智能补全 (blink.cmp)
+
+| 快捷键 | 模式 | 描述 |
+|--------|------|------|
+| `<Tab>` | Insert | 下一个补全项 / Snippet 下一个跳转点 |
+| `<S-Tab>` | Insert | 上一个补全项 / Snippet 上一个跳转点 |
+| `<CR>` | Insert | 确认补全 (仅在手动选中项时生效) |
+| `<C-j>` | Insert/Select | Snippet 下一个跳转点 |
+| `<C-k>` | Insert/Select | Snippet 上一个跳转点 |
+| `<C-n>` | Insert | 手动触发补全 |
+| `<C-c>` | Insert | 关闭补全窗口 |
+| `<C-u>` | Insert | 向上滚动文档 |
+| `<C-d>` | Insert | 向下滚动文档 |
+
 ### 调试 (DAP)
 
 | 快捷键 | 描述 |

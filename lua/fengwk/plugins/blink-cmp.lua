@@ -3,7 +3,18 @@ local globals = require "fengwk.globals"
 return {
   "saghen/blink.cmp",
   dependencies = {
-    "rafamadriz/friendly-snippets", -- 代码片段集合
+    -- "rafamadriz/friendly-snippets", -- 代码片段集合（可选，提供预置 snippets）
+    {
+      "L3MON4D3/LuaSnip",           -- Snippet 引擎（支持变量转换语法）
+      version = "v2.*",
+      build = "make install_jsregexp", -- 正则表达式支持
+      config = function()
+        -- require("luasnip.loaders.from_vscode").lazy_load() -- 加载 friendly-snippets
+        require("luasnip.loaders.from_vscode").lazy_load({ -- 加载自定义 snippets
+          paths = { vim.fn.stdpath("config") .. "/snippets" }
+        })
+      end,
+    },
     {
       "saghen/blink.compat",        -- nvim-cmp 兼容层
       version = "*",
@@ -27,31 +38,39 @@ return {
       ["<C-u>"] = { "scroll_documentation_up", "fallback" },
       ["<C-d>"] = { "scroll_documentation_down", "fallback" },
 
+      -- <C-j> / <C-k> 选择 + tab 确定
       -- 智能跳转：优先处理补全，其次处理 snippet
-      ["<C-j>"] = {
-        function(cmp)
-          if cmp.is_visible() then
-            return cmp.select_next()
-          elseif cmp.snippet_active() then
-            return cmp.snippet_forward()
-          end
-        end,
-        "fallback",
-      },
-      ["<C-k>"] = {
-        function(cmp)
-          if cmp.is_visible() then
-            return cmp.select_prev()
-          elseif cmp.snippet_active({ direction = -1 }) then
-            return cmp.snippet_backward()
-          end
-        end,
-        "fallback",
-      },
+      -- ["<C-j>"] = {
+      --   function(cmp)
+      --     if cmp.is_visible() then
+      --       return cmp.select_next()
+      --     elseif cmp.snippet_active() then
+      --       return cmp.snippet_forward()
+      --     end
+      --   end,
+      --   "fallback",
+      -- },
+      -- ["<C-k>"] = {
+      --   function(cmp)
+      --     if cmp.is_visible() then
+      --       return cmp.select_prev()
+      --     elseif cmp.snippet_active({ direction = -1 }) then
+      --       return cmp.snippet_backward()
+      --     end
+      --   end,
+      --   "fallback",
+      -- },
 
       -- 确认补全
-      ["<Tab>"] = { "select_and_accept", "fallback" },
+      -- ["<Tab>"] = { "select_and_accept", "fallback" },
       -- ["<CR>"] = { "select_and_accept", "fallback" },
+
+      -- <Tab> 选择 + <CR> 确定
+      ["<Tab>"] = { "select_next", "snippet_forward", "fallback" },
+      ["<S-Tab>"] = { "select_prev", "snippet_backward", "fallback" },
+      ["<CR>"] = { "accept", "fallback" },
+      ["<C-j>"] = { "snippet_forward", "fallback" },
+      ["<C-k>"] = { "snippet_backward", "fallback" },
 
       -- 手动触发或隐藏补全
       ["<C-n>"] = { "show", "fallback" },
@@ -66,6 +85,13 @@ return {
     -- 补全配置
     -- 文档: https://cmp.saghen.dev/configuration/completion.html
     completion = {
+      -- 列表行为：禁用自动预选，恢复手动选择逻辑
+      list = {
+        selection = {
+          preselect = false,   -- 出现时不自动选中第一项
+          auto_insert = true,  -- 选中时自动插入预览
+        },
+      },
       -- 补全菜单
       menu = {
         border = globals.theme.border,
@@ -134,13 +160,24 @@ return {
         preset = "none",
         ["<C-u>"] = { "scroll_documentation_up", "fallback" },
         ["<C-d>"] = { "scroll_documentation_down", "fallback" },
-        ["<C-j>"] = { "select_next", "fallback" },
-        ["<C-k>"] = { "select_prev", "fallback" },
-        ["<Tab>"] = { "select_and_accept", "fallback" }, -- 使用 select_and_accept 避免插入模式错误
+        -- <C-j> / <C-k> 选择 + tab 确定
+        -- ["<C-j>"] = { "select_next", "fallback" },
+        -- ["<C-k>"] = { "select_prev", "fallback" },
+        -- ["<Tab>"] = { "select_and_accept", "fallback" }, -- 使用 select_and_accept 避免插入模式错误
+        -- <Tab> 选择 + <CR> 确定
+        ["<Tab>"] = { "select_next", "fallback" },
+        ["<S-Tab>"] = { "select_prev", "fallback" },
+
         ["<C-n>"] = { "show", "fallback" },
         ["<C-c>"] = { "hide", "fallback" },
       },
       completion = {
+        list = {
+          selection = {
+            preselect = false,
+            auto_insert = true,
+          },
+        },
         menu = { auto_show = true }, -- 自动显示补全菜单
       },
       sources = { "cmdline", "path" }, -- 命令行模式不使用 buffer 补全
@@ -149,6 +186,10 @@ return {
     -- 模糊匹配器（优先使用 Rust 实现以获得更好的性能和容错性）
     -- 文档: https://cmp.saghen.dev/configuration/fuzzy.html
     fuzzy = { implementation = "prefer_rust_with_warning" },
+
+    -- Snippet 引擎：使用 LuaSnip（支持变量转换语法）
+    -- 文档: https://cmp.saghen.dev/configuration/snippets.html
+    snippets = { preset = "luasnip" },
   },
 
   -- 允许在其他地方扩展 sources.default
