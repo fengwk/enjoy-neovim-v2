@@ -9,6 +9,10 @@ return {
 
     require "nvim-tree".setup {
       sync_root_with_cwd = true,
+      renderer = {
+        -- 将仅包含单层子目录的目录链合并为一个节点
+        group_empty = true,
+      },
     }
 
     local keymap = vim.keymap.set
