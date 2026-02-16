@@ -141,6 +141,25 @@ return {
 
       -- 补全源提供者配置
       providers = {
+        buffer = {
+          opts = {
+            -- 收集所有可见窗口的 buffer（跨 tab）
+            get_bufnrs = function()
+              local bufnrs = {}
+              local seen = {}
+              for _, tabpage in ipairs(vim.api.nvim_list_tabpages()) do
+                for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
+                  local buf = vim.api.nvim_win_get_buf(win)
+                  if not seen[buf] then
+                    seen[buf] = true
+                    table.insert(bufnrs, buf)
+                  end
+                end
+              end
+              return bufnrs
+            end,
+          },
+        },
         -- DAP 补全源（通过 blink.compat 桥接 cmp-dap）
         dap = {
           name = "DAP",
