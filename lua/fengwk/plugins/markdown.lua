@@ -21,17 +21,17 @@ return {
     end,
     ft = globals.markdown_filetypes,
   },
-  -- {
-  --   "MeanderingProgrammer/render-markdown.nvim",
-  --   ft = globals.markdown_filetypes, -- 仅在 markdown 文件类型时加载
-  --   opts = {
-  --     file_types = globals.markdown_filetypes,
-  --     -- https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/177
-  --     render_modes = { "n", "v", "i", "c" },
-  --   },
-  --   dependencies = {
-  --     "nvim-treesitter/nvim-treesitter",
-  --     "nvim-tree/nvim-web-devicons"
-  --   },
-  -- },
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    ft = globals.markdown_filetypes, -- 仅在 markdown 文件类型时加载
+    opts = {
+      file_types = globals.markdown_filetypes,
+      -- https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/177
+      render_modes = { "n", "v", "i", "c" },
+    },
+    dependencies = {
+      "nvim-treesitter/nvim-treesitter",
+      "nvim-tree/nvim-web-devicons"
+    },
+  },
 }
