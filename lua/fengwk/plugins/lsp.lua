@@ -200,11 +200,11 @@ local function build_lsp_conf(server, capabilities)
           vim.lsp.handlers["textDocument/completion"](err, result, method, params)
         end
       end,
-      ["textDocument/hover"] = vim.lsp.with(
-        vim.lsp.handlers.hover, {
+      ["textDocument/hover"] = function(err, result, ctx, config)
+        return vim.lsp.handlers.hover(err, result, ctx, vim.tbl_deep_extend("force", config or {}, {
           border = globals.theme.border,
-        }
-      )
+        }))
+      end
     },
   })
 end
@@ -347,7 +347,7 @@ return {
 
       -- 定义 lsp 日志级别
       -- TRACE DEBUG INFO WARN ERROR OFF
-      vim.lsp.set_log_level("INFO")
+      vim.lsp.log.set_level("INFO")
 
       -- 设置 ui
       require "lspconfig.ui.windows".default_options.border = globals.theme.border
