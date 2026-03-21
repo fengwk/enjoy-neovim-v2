@@ -9,6 +9,12 @@ return {
 
     require "nvim-tree".setup {
       sync_root_with_cwd = true,
+      -- 避免打开文件时按初始配置重新调整 tree 宽度
+      actions = {
+        open_file = {
+          resize_window = false,
+        },
+      },
       renderer = {
         -- 将仅包含单层子目录的目录链合并为一个节点
         group_empty = true,
