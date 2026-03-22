@@ -225,8 +225,8 @@ end
 
 function utils.read_file(filename)
   local file, _ = io.open(filename, "r")
-  if file ~= nil then       -- err == nil 说明文件存在
-    local res = file:read() -- 读取状态值
+  if file ~= nil then
+    local res = file:read("*a")
     file:close()
     return res
   end
@@ -240,10 +240,19 @@ end
 
 function utils.read_json(filename)
   local json = utils.read_file(filename)
-  if not json then
+  if not json or json == "" then
     return nil
   end
-  return vim.fn.json_decode(json)
+
+  local ok, decoded = pcall(vim.fn.json_decode, json)
+  if not ok then
+    vim.schedule(function()
+      vim.notify("Failed to parse JSON file: " .. filename, vim.log.levels.ERROR)
+    end)
+    return nil
+  end
+
+  return decoded
 end
 
 function utils.is_uri(str)
