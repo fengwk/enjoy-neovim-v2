@@ -170,11 +170,12 @@ function M.setup(user_config)
     { group = group, pattern = "*:n", callback = throttled_on_normal_enter }
   )
 
-  -- 在非 Windows 系统上，更积极地切换到英文，以确保在普通模式下尽可能处于英文状态
-  -- 在 Windows 上禁用此功能，因为切换命令可能较慢
+  -- 在非 Windows 系统上，在启动完成后与重新获得焦点时校正普通模式输入法状态。
+  -- 这样可以保留原先“普通模式尽量保持英文”的行为，同时避免在启动阶段因
+  -- BufCreate/BufWinEnter 触发额外的外部命令调用。
   if utils.os ~= "win" then
     vim.api.nvim_create_autocmd(
-      { "BufCreate", "BufWinEnter", "FocusGained" },
+      { "VimEnter", "FocusGained" },
       { group = group, pattern = "*", callback = on_focus_gained }
     )
   end
