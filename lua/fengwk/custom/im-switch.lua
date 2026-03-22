@@ -10,6 +10,7 @@
 -- - Linux: 需要 `fcitx5-remote`
 --]]
 local utils = require "fengwk.utils"
+local unpack_args = table.unpack or unpack
 
 local M = {}
 
@@ -92,13 +93,13 @@ local function auto_switch_pinyin(mode)
   if mode == "in" then -- 进入插入模式
     local state = utils.read_file(state_filename)
     if state == "zh" then -- 如果之前的状态是中文，则恢复
-      local cmd = { table.unpack(cmd_base) }
+      local cmd = { unpack_args(cmd_base) }
       table.insert(cmd, "zh")
       utils.system(cmd)
     end
   else -- 离开插入模式
     -- 切换到英文，并获取之前的状态
-    local cmd = { table.unpack(cmd_base) }
+    local cmd = { unpack_args(cmd_base) }
     table.insert(cmd, "en")
     local state = utils.system(cmd)
     -- 将之前的状态保存到缓存文件

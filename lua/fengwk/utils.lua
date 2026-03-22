@@ -6,15 +6,20 @@ local globals = require "fengwk.globals"
 
 local utils = {}
 
-local sysname = string.lower(vim.uv.os_uname().sysname)
+local uname = vim.uv.os_uname()
+local sysname = string.lower(uname.sysname)
+local release = string.lower(uname.release)
+local version = string.lower(uname.version)
 if string.find(sysname, "windows") ~= nil then
   utils.os = "win"
+elseif string.find(release, "microsoft") ~= nil or string.find(version, "microsoft") ~= nil or vim.fn.has("wsl") == 1 then
+  utils.os = "wsl"
 elseif string.find(sysname, "linux") ~= nil then
   utils.os = "linux"
 elseif string.find(sysname, "darwin") ~= nil then
   utils.os = "macos"
 else
-  utils.os = "wsl"
+  utils.os = "linux"
 end
 
 if string.find(sysname, "windows") ~= nil then

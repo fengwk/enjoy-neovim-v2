@@ -78,7 +78,7 @@ vim.o.listchars = "tab:>-,trail:·,precedes:«,extends:»,"
 -- vim.cmd("set clipboard^=unnamed,unnamedplus")
 vim.opt.clipboard:append("unnamedplus")
 -- vim.o.clipboard = 'unnamedplus'
--- ssh环境支持osc52，使ssh连接也能共享剪切板
+-- ssh 环境支持 osc52，使 ssh 连接也能共享剪切板。
 if os.getenv("SSH_TTY") ~= nil then
   vim.g.clipboard = {
     name = 'OSC 52',
@@ -96,6 +96,45 @@ if os.getenv("SSH_TTY") ~= nil then
         return vim.split(vim.fn.getreg '"', "\n")
       end,
     },
+  }
+elseif utils.os == "wsl" and utils.has_cmd("win32yank.exe") then
+  vim.g.clipboard = {
+    name = 'win32yank-wsl',
+    copy = {
+      ['+'] = 'win32yank.exe -i --crlf',
+      ['*'] = 'win32yank.exe -i --crlf',
+    },
+    paste = {
+      ['+'] = 'win32yank.exe -o --lf',
+      ['*'] = 'win32yank.exe -o --lf',
+    },
+    cache_enabled = 0,
+  }
+elseif os.getenv("WAYLAND_DISPLAY") ~= nil and utils.has_cmd("wl-copy") and utils.has_cmd("wl-paste") then
+  vim.g.clipboard = {
+    name = 'wl-clipboard',
+    copy = {
+      ['+'] = 'wl-copy --type text/plain',
+      ['*'] = 'wl-copy --primary --type text/plain',
+    },
+    paste = {
+      ['+'] = 'wl-paste --no-newline',
+      ['*'] = 'wl-paste --no-newline --primary',
+    },
+    cache_enabled = 0,
+  }
+elseif utils.has_cmd("xclip") then
+  vim.g.clipboard = {
+    name = 'xclip',
+    copy = {
+      ['+'] = 'xclip -selection clipboard -in',
+      ['*'] = 'xclip -selection primary -in',
+    },
+    paste = {
+      ['+'] = 'xclip -selection clipboard -out',
+      ['*'] = 'xclip -selection primary -out',
+    },
+    cache_enabled = 0,
   }
 end
 
