@@ -150,21 +150,38 @@ end
 
 -- 标记当前是否在 tmux 环境中
 local is_in_tmux = os.getenv("TMUX") ~= nil
+local auto_window_title_max = tonumber(os.getenv("AUTO_WINDOW_TITLE_MAX")) or 32
 -- 开启 Neovim 的标题设置功能, 对非 tmux 环境生效
 vim.o.title = true
+
+--- 截断自动生成的窗口/终端标题，避免标题过长影响展示。
+-- @param title string
+-- @return string
+local function truncate_auto_title(title)
+  local truncation_suffix = ".."
+  if #title <= auto_window_title_max then
+    return title
+  end
+  return string.sub(title, 1, auto_window_title_max - #truncation_suffix) .. truncation_suffix
+end
+
+--- 在 tmux 中直接更新当前 window 名称。
+-- @param title string
+local function rename_tmux_window(title)
+  local next_name = truncate_auto_title(title)
+  vim.fn.system({ "tmux", "rename-window", next_name })
+end
+
 --- 设置终端和 tmux 标题的统一函数
 -- @param title string | nil 要设置的标题。如果为 nil 或空，则表示重置。
 local function set_title(title)
   -- 对 title 进行基本的清洁，防止空值
   title = title or ""
   if is_in_tmux then
-    -- 在 tmux 环境中，直接调用 tmux 命令
-    -- 为了防止标题中的特殊字符（如 '）破坏命令，我们进行转义
-    local escaped_title = vim.fn.escape(title, "'")
-    vim.fn.system("tmux rename-window '" .. escaped_title .. "'")
+    rename_tmux_window(title)
   else
     -- 在非 tmux 环境中，使用 Neovim 的标准方式
-    vim.o.titlestring = title
+    vim.o.titlestring = truncate_auto_title(title)
   end
 end
 
