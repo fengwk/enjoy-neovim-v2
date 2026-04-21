@@ -3,7 +3,7 @@ local M = {}
 local globals = require "fengwk.globals"
 local utils = require "fengwk.utils"
 
-local data_path = vim.fs.joinpath(vim.fn.stdpath("data"), "workspaces.json")
+local data_path = vim.fs.joinpath(vim.fn.stdpath("state"), "workspaces.json")
 
 -- 内部状态
 local data_cache = nil

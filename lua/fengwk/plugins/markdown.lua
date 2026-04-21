@@ -21,6 +21,21 @@ return {
     end,
     ft = globals.markdown_filetypes,
   },
+  -- {
+  --   -- https://github.com/toppair/peek.nvim
+  --   -- require deno
+  --   -- curl -fsSL https://deno.land/install.sh | sh
+  --   "toppair/peek.nvim",
+  --   event = { "VeryLazy" },
+  --   build = "deno task --quiet build:fast",
+  --   config = function()
+  --     require("peek").setup({
+  --       app = "browser"
+  --     })
+  --     vim.api.nvim_create_user_command("PeekOpen", require("peek").open, {})
+  --     vim.api.nvim_create_user_command("PeekClose", require("peek").close, {})
+  --   end,
+  -- },
   {
     "MeanderingProgrammer/render-markdown.nvim",
     ft = globals.markdown_filetypes, -- 仅在 markdown 文件类型时加载

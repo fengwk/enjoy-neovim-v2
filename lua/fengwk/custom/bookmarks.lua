@@ -5,7 +5,7 @@ local utils = require "fengwk.utils"
 local md5 = require "fengwk.custom.md5"
 
 -- 配置文件路径
-local data_path = vim.fs.joinpath(vim.fn.stdpath("data"), "bookmarks.json")
+local data_path = vim.fs.joinpath(vim.fn.stdpath("state"), "bookmarks.json")
 
 -- data_cache 是内存中的单一数据源
 local data_cache = nil
