@@ -290,7 +290,7 @@ local function build_conf(base_conf)
         function() require("fengwk.lsp.jdtls.enhancer").debug() end, {})
 
       -- 拷贝引用
-      vim.api.nvim_create_user_command("JdtCopyReference", function()
+      vim.api.nvim_create_user_command("JdtReferenceCopy", function()
         require("fengwk.lsp.jdtls.enhancer").copy_reference()
       end, {})
 
