@@ -87,10 +87,10 @@ local function build_context_text(file_path, selection)
   }, "\n")
 end
 
--- CopyContext 支持：
+-- ContextCopy 支持：
 -- 1. 普通模式下仅复制文件路径
 -- 2. v / V / <C-v> 下复制文件路径 + 选中文本 + 行号范围
-local function copy_context(opts)
+local function context_copy(opts)
   local file_path = get_current_file_path()
   if not file_path then
     vim.notify("Current buffer has no file path.", vim.log.levels.WARN)
@@ -114,16 +114,10 @@ local function copy_context(opts)
 
   local content = build_context_text(file_path, selection)
   copy_to_clipboard(content)
-
-  if selection and selection.text ~= "" then
-    vim.notify("Copied file path and selected snippet to clipboard.")
-  else
-    vim.notify("Copied file path to clipboard.")
-  end
 end
 
 function M.setup()
-  vim.api.nvim_create_user_command("CopyContext", copy_context, {
+  vim.api.nvim_create_user_command("ContextCopy", context_copy, {
     range = true,
     desc = "Copy file path or selection as context",
   })

@@ -645,6 +645,13 @@ local function format_export_line_label(comment)
   return string.format("Line %d-%d", comment.line, end_line)
 end
 
+-- 获取当前 buffer 的导出上下文，供 export 与组合命令复用。
+local function get_export_context(bufnr)
+  local file, state = resolve_buffer_comments(bufnr)
+  local resolved_comments = state and state.resolved_comments or {}
+  return file, state, resolved_comments
+end
+
 -- 跳转到当前文件中的上一个/下一个可解析 review comment。
 local function jump_comment(direction)
   local bufnr = vim.api.nvim_get_current_buf()
@@ -761,7 +768,6 @@ function M.add(opts)
     sort_comments(state.comments)
     save_state(selection.file)
     render_buffer(bufnr)
-    notify("Review comment added")
   end)
 end
 
@@ -773,7 +779,6 @@ function M.delete()
       state.last_tick = nil
       save_state(state.file)
       render_buffer(vim.api.nvim_get_current_buf())
-      notify("Review comment deleted")
     end
   end)
 end
@@ -791,24 +796,28 @@ function M.edit()
       state.last_tick = nil
       save_state(state.file)
       render_buffer(vim.api.nvim_get_current_buf())
-      notify("Review comment updated")
     end)
   end)
 end
 
 -- 清空当前文件的全部 comment；清空后会删除对应 JSON 文件。
-function M.clear()
+function M.clear(opts)
+  opts = opts or {}
   local bufnr = vim.api.nvim_get_current_buf()
   local file = get_buffer_file(bufnr)
   if not file then
-    notify("Current buffer has no file path", vim.log.levels.WARN)
-    return
+    if not opts.silent_warn then
+      notify("Current buffer has no file path", vim.log.levels.WARN)
+    end
+    return false
   end
 
   local state = load_state(file)
   if #state.comments == 0 then
-    notify("No review comments for current file", vim.log.levels.WARN)
-    return
+    if not opts.silent_warn then
+      notify("No review comments for current file", vim.log.levels.WARN)
+    end
+    return false
   end
 
   state.comments = {}
@@ -817,17 +826,33 @@ function M.clear()
   state.last_tick = nil
   save_state(file)
   render_buffer(bufnr)
-  notify("Review comments cleared for current file")
+  return true
 end
 
 -- 导出当前文件的全部 comment，格式固定为便于复制给外部 agent 的块结构。
-function M.export()
+function M.export(opts)
+  opts = opts or {}
   local bufnr = vim.api.nvim_get_current_buf()
-  local file, state = resolve_buffer_comments(bufnr)
-  local resolved_comments = state and state.resolved_comments or {}
-  if not file or not state or #resolved_comments == 0 then
-    notify("No review comments for current file", vim.log.levels.WARN)
-    return
+  local file, state, resolved_comments = get_export_context(bufnr)
+  if not file then
+    if not opts.silent_warn then
+      notify("Current buffer has no file path", vim.log.levels.WARN)
+    end
+    return false
+  end
+
+  if not state or #state.comments == 0 then
+    if not opts.silent_warn then
+      notify("No review comments for current file", vim.log.levels.WARN)
+    end
+    return false
+  end
+
+  if #resolved_comments == 0 then
+    if not opts.silent_warn then
+      notify("No exportable review comments for current file", vim.log.levels.WARN)
+    end
+    return false
   end
 
   local lines = {
@@ -861,10 +886,9 @@ function M.export()
   vim.fn.setreg("+", content)
   vim.fn.setreg("*", content)
   if state.unresolved_count > 0 then
-    notify(string.format("Review comments exported to clipboard (%d unresolved comments skipped)", state.unresolved_count))
-    return
+    notify(string.format("Review comments exported to clipboard (%d unresolved comments skipped)", state.unresolved_count), vim.log.levels.WARN)
   end
-  notify("Review comments exported to clipboard")
+  return true
 end
 
 -- setup 负责注册命令、定义高亮和自动命令。
@@ -884,23 +908,28 @@ function M.setup()
   end
   vim.api.nvim_set_hl(0, "ReviewCommentUnderline", underline_hl)
 
-  vim.api.nvim_create_user_command("ReviewCommentAdd", function(opts)
+  vim.api.nvim_create_user_command("ReviewCommentsAdd", function(opts)
     M.add(opts)
   end, { range = true, desc = "Add review comment" })
 
-  vim.api.nvim_create_user_command("ReviewCommentDelete", function()
+  vim.api.nvim_create_user_command("ReviewCommentsDelete", function()
     M.delete()
   end, { desc = "Delete review comment at cursor" })
 
-  vim.api.nvim_create_user_command("ReviewCommentEdit", function()
+  vim.api.nvim_create_user_command("ReviewCommentsEdit", function()
     M.edit()
   end, { desc = "Edit review comment at cursor" })
 
-  vim.api.nvim_create_user_command("ReviewComentContext", function()
+  vim.api.nvim_create_user_command("ReviewCommentsCopy", function()
     M.export()
-  end, { desc = "Export current file review comments" })
+  end, { desc = "Copy current file review comments" })
 
-  vim.api.nvim_create_user_command("ReviewCommentClear", function()
+  vim.api.nvim_create_user_command("ReviewCommentsCopyAndClear", function()
+    M.export()
+    M.clear { silent_warn = true }
+  end, { desc = "Copy and then clear current file review comments" })
+
+  vim.api.nvim_create_user_command("ReviewCommentsClear", function()
     M.clear()
   end, { desc = "Clear current file review comments" })
 
