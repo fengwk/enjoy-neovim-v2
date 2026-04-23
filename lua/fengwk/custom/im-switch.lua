@@ -6,11 +6,10 @@
 -- - 当再次进入插入模式时，如果文件类型匹配，则恢复之前的输入法状态。
 --
 -- 依赖:
--- - Windows/WSL: 需要 `im-switch-x64.exe`，来自 https://github.com/fengwk/im-switch-for-windows
+-- - Windows/WSL: 需要 `im-select-mspy.exe`，来自 https://github.com/fengwk/im-select-mspy
 -- - Linux: 需要 `fcitx5-remote`
 --]]
 local utils = require "fengwk.utils"
-local unpack_args = table.unpack or unpack
 
 local M = {}
 
@@ -23,12 +22,13 @@ M.config = {
   throttle_timeout = 100,
 }
 
--- 用于缓存输入法状态的文件路径 (仅用于 Windows/WSL)
-local data_dir = vim.fn.stdpath("cache")
-local state_filename = vim.fs.joinpath(data_dir, "im-switch-state")
-
--- 对于 fcitx5，该变量用于记录离开插入模式时的输入法状态
+-- 用于记录离开插入模式时的输入法状态
 local fcitx5_last_state = nil
+local mspy_last_state = nil
+
+-- im-select-mspy.exe 路径及英文模式标识
+local mspy_exe = vim.fs.joinpath(vim.fn.stdpath("config"), "lib", "im-select-mspy.exe")
+local MSPY_ENGLISH_MODE = "英语模式"
 
 -- fcitx5 状态缓存，避免频繁调用外部命令
 local fcitx5_state_cache = nil
@@ -76,34 +76,28 @@ local function auto_switch_fcitx5(mode)
   end
 end
 
--- 自动切换 Windows/WSL 的微软拼音输入法
--- 依赖外部工具 `im-switch-x64.exe`
--- 离开插入模式时：切换到英文，并将之前的状态 ("zh" 或 "en") 写入缓存文件。
--- 进入插入模式时：读取缓存文件，如果状态是 "zh"，则切换回中文。
+-- 异步切换 Windows/WSL 的微软拼音输入法
+-- 依赖外部工具 `im-select-mspy.exe`
+-- 离开插入模式时：异步获取当前状态并切换到英文。
+-- 进入插入模式时：若之前为中文则异步恢复。
 -- @param mode "in" 表示进入插入/选择模式, "out" 表示离开
-local function auto_switch_pinyin(mode)
-  local cmd_base = {}
-  if utils.os == "wsl" then
-    -- 在 WSL 中, 需要通过 cmd.exe 调用 Windows 的可执行文件，这可能会有性能影响
-    cmd_base = { "cmd.exe", "/C", "im-switch-x64.exe" }
-  else
-    cmd_base = { "im-switch-x64.exe" }
-  end
-
-  if mode == "in" then -- 进入插入模式
-    local state = utils.read_file(state_filename)
-    if state == "zh" then -- 如果之前的状态是中文，则恢复
-      local cmd = { unpack_args(cmd_base) }
-      table.insert(cmd, "zh")
-      utils.system(cmd)
+local function auto_switch_mspy(mode)
+  if mode == "in" then
+    if mspy_last_state and mspy_last_state ~= MSPY_ENGLISH_MODE then
+      vim.system({ mspy_exe, mspy_last_state }, {}, function() end)
     end
-  else -- 离开插入模式
-    -- 切换到英文，并获取之前的状态
-    local cmd = { unpack_args(cmd_base) }
-    table.insert(cmd, "en")
-    local state = utils.system(cmd)
-    -- 将之前的状态保存到缓存文件
-    utils.write_file(state_filename, state)
+  else -- "out"
+    vim.system({ mspy_exe }, { text = true }, function(obj)
+      if obj.code == 0 and obj.stdout then
+        local state = vim.trim(obj.stdout)
+        if state ~= "" then
+          mspy_last_state = state
+          if state ~= MSPY_ENGLISH_MODE then
+            vim.system({ mspy_exe, MSPY_ENGLISH_MODE }, {}, function() end)
+          end
+        end
+      end
+    end)
   end
 end
 
@@ -111,7 +105,7 @@ end
 -- @param mode "in" 表示进入插入/选择模式, "out" 表示离开
 local function auto_switch_im(mode)
   if utils.os == "win" or utils.os == "wsl" then
-    auto_switch_pinyin(mode)
+    auto_switch_mspy(mode)
   else -- 默认为使用 fcitx5 的 Linux/macOS
     auto_switch_fcitx5(mode)
   end

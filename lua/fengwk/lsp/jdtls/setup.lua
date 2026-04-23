@@ -275,6 +275,7 @@ local function build_conf(base_conf)
       -- jdtls 特性
 
       jdtls.setup_dap { hotcodereplace = "auto" }
+      require("fengwk.lsp.jdtls.enhancer").setup_remote_attach()
 
       -- https://github.com/mfussenegger/nvim-jdtls#nvim-dap-configuration
       -- 注册用于调试的主类，如果是新增的main方法需要使用:JdtRefreshDebugConfigs命令刷新
@@ -302,7 +303,7 @@ local function build_conf(base_conf)
         { silent = true, buffer = bufnr, desc = "Lsp Inherited Members" })
 
       -- 刷新配置
-      vim.keymap.set("n", "<leader>rr", "<Cmd>JdtUpdateConfig<CR>",
+      vim.keymap.set("n", "<leader>rr", "<Cmd>JdtUpdateConfig!<CR>",
         { silent = true, buffer = bufnr, desc = "Lsp Update Config" })
     end,
 
@@ -350,6 +351,15 @@ local function build_conf(base_conf)
         maven = {
           downloadSources = true,
           updateSnapshots = true,
+        },
+        debug = {
+          settings = {
+            jdwp = {
+              requestTimeout = 15000,
+              async = "auto",
+              limitOfVariablesPerJdwpRequest = 50,
+            },
+          },
         },
         -- https://github.com/redhat-developer/vscode-java/issues/1470
         -- https://github.com/redhat-developer/vscode-java/wiki/Predefined-Variables-for-Java-Template-Snippets

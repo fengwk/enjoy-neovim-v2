@@ -733,7 +733,7 @@ local function schedule_render(bufnr)
     end
 
     if not vim.api.nvim_buf_is_valid(bufnr) then
-      timer:close()
+      if not timer:is_closing() then timer:close() end
       return
     end
 
@@ -742,7 +742,7 @@ local function schedule_render(bufnr)
       refresh_hover(bufnr)
     end
 
-    timer:close()
+    if not timer:is_closing() then timer:close() end
   end))
 end
 

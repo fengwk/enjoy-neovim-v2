@@ -213,7 +213,7 @@ local function set_dap_sign()
   local dap_breakpoint = {
     -- 普通断点
     error = {
-      text = "",
+      text = "",
       texthl = "DapBreakpoint",
       linehl = "DapBreakpoint",
       numhl = "DapBreakpoint",
