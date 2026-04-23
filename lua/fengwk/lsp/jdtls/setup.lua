@@ -303,7 +303,7 @@ local function build_conf(base_conf)
         { silent = true, buffer = bufnr, desc = "Lsp Inherited Members" })
 
       -- 刷新配置
-      vim.keymap.set("n", "<leader>rr", "<Cmd>JdtUpdateConfig!<CR>",
+      vim.keymap.set("n", "<leader>rr", "<Cmd>JdtUpdateConfig<CR>",
         { silent = true, buffer = bufnr, desc = "Lsp Update Config" })
     end,
 

@@ -7,6 +7,50 @@ local action_state = require "telescope.actions.state"
 local make_entry = require('telescope.make_entry')
 
 local setup_opts = {}
+local MAX_DISPLAY_PATH_LEN = 70
+
+local function shorten_from_left(value, max_len)
+  if type(value) ~= "string" then
+    return value
+  end
+  if #value <= max_len then
+    return value
+  end
+  return "..." .. value:sub(#value - max_len + 4)
+end
+
+local function make_uri_readable(value)
+  if type(value) ~= "string" then
+    return tostring(value)
+  end
+  if value:match("^file:/+") then
+    return value:gsub("^file:/+", "/")
+  end
+  if value:match("^[^:]+://") then
+    local ok, decoded = pcall(vim.uri_to_fname, value)
+    if ok and decoded and #decoded > 0 then
+      return decoded
+    end
+  end
+  return value
+end
+
+local function build_picker_entries(items, label_fn)
+  local entries = {}
+  for i, item in ipairs(items) do
+    local raw = label_fn(item)
+    raw = type(raw) == "string" and raw or tostring(raw)
+    local readable = make_uri_readable(raw)
+    table.insert(entries, {
+      index = i,
+      item = item,
+      raw = raw,
+      readable = readable,
+      display = string.format('%d: %s', i, shorten_from_left(readable, MAX_DISPLAY_PATH_LEN)),
+    })
+  end
+  return entries
+end
 
 local function enhance_pick_one(fallback)
   return function(items, prompt, label_fn)
@@ -17,25 +61,28 @@ local function enhance_pick_one(fallback)
     end
 
     -- 使用telescope进行选择
-    local choices = {}
-    local choice_to_item = {}
     label_fn = label_fn and label_fn or function(item) return item end
-    for i, item in ipairs(items) do
-      local choice = string.format('%d: %s', i, label_fn(item))
-      table.insert(choices, choice)
-      choice_to_item[choice] = item
-    end
+    local choices = build_picker_entries(items, label_fn)
 
     local opts = vim.tbl_deep_extend("keep", setup_opts, { bufnr = vim.api.nvim_get_current_buf() })
 
     pickers.new(opts, {
       prompt_title = prompt,
-      finder = finders.new_table { results = choices },
+      finder = finders.new_table {
+        results = choices,
+        entry_maker = function(entry)
+          return {
+            value = entry,
+            ordinal = entry.readable,
+            display = entry.display,
+          }
+        end,
+      },
       attach_mappings = function(_, map)
         utils.map_select_one(map, function(prompt_bufnr)
           local picker = action_state.get_current_picker(prompt_bufnr)
           local selection = picker:get_selection()
-          local selected = selection and selection[1] and choice_to_item[selection[1]] or nil
+          local selected = selection and selection.value and selection.value.item or nil
           actions.close(prompt_bufnr)
           coroutine.resume(co, selected)
         end)
@@ -65,27 +112,30 @@ local function enhance_pick_many(fallback)
     end
 
     -- 使用telescope进行选择
-    local choices = {}
-    local choice_to_item = {}
     label_fn = label_fn and label_fn or function(item) return item end
-    for i, item in ipairs(items) do
-      local choice = string.format('%d: %s', i, label_fn(item))
-      table.insert(choices, choice)
-      choice_to_item[choice] = item
-    end
+    local choices = build_picker_entries(items, label_fn)
 
     local opts = vim.tbl_deep_extend("keep", setup_opts, { bufnr = vim.api.nvim_get_current_buf() })
 
     pickers.new(opts, {
       prompt_title = prompt,
-      finder = finders.new_table { results = choices },
+      finder = finders.new_table {
+        results = choices,
+        entry_maker = function(entry)
+          return {
+            value = entry,
+            ordinal = entry.readable,
+            display = entry.display,
+          }
+        end,
+      },
       attach_mappings = function(_, map)
         utils.map_select_many(map, function(prompt_bufnr)
           local picker = action_state.get_current_picker(prompt_bufnr)
           local multi_selection = picker:get_multi_selection()
           local selecteds = {}
           for _, selection in ipairs(multi_selection) do
-            local selected = selection and selection[1] and choice_to_item[selection[1]] or nil
+            local selected = selection and selection.value and selection.value.item or nil
             if selected then
               table.insert(selecteds, selected)
             end
