@@ -1,6 +1,33 @@
 local globals = require "fengwk.globals"
 local utils = require "fengwk.utils"
 
+local function setup_print_notify_bridge()
+  _G.print = function(...)
+    if #vim.api.nvim_list_uis() == 0 then
+      return
+    end
+
+    local args = { ... }
+    local parts = vim.tbl_map(function(value)
+      if value == nil then
+        return "nil"
+      end
+      return tostring(value)
+    end, args)
+    local message = table.concat(parts, "\t")
+
+    local function notify_print()
+      pcall(vim.notify, message, vim.log.levels.INFO, { title = "print" })
+    end
+
+    if vim.in_fast_event() then
+      vim.schedule(notify_print)
+    else
+      notify_print()
+    end
+  end
+end
+
 -- 编辑器增强插件
 return {
   {
@@ -196,6 +223,22 @@ return {
     -- 滚动条+高亮(search diagnostic gitsigns marks quickfix)
     "lewis6991/satellite.nvim",
     event = "VeryLazy",
-    opts = {}
+    opts = {},
+  },
+  {
+    "rcarriga/nvim-notify",
+    opts = {
+      -- 限制通知宽度并在超长消息时自动换行，避免 print 桥接后的长文本打断输入。
+      render = "wrapped-compact",
+      max_width = function()
+        return math.min(120, math.floor(vim.o.columns * 0.5))
+      end,
+    },
+    config = function(_, opts)
+      local notify = require "notify"
+      notify.setup(opts)
+      vim.notify = notify
+      setup_print_notify_bridge()
+    end,
   },
 }

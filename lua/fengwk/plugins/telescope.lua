@@ -1,5 +1,16 @@
 local utils = require "fengwk.utils"
 
+local function setup_telescope_notify_dropdown(telescope, telescope_themes)
+  -- notify 扩展不读取 telescope.setup().extensions.notify 配置，这里包一层使 :Telescope notify 默认使用 dropdown 主题。
+  local telescope_extension_notify = telescope.extensions.notify.notify
+  telescope.extensions.notify.notify = function(opts)
+    opts = vim.tbl_deep_extend("force", telescope_themes.get_dropdown({
+      previewer = true,
+    }), opts or {})
+    return telescope_extension_notify(opts)
+  end
+end
+
 -- https://github.com/nvim-telescope/telescope.nvim
 return {
   "nvim-telescope/telescope.nvim",
@@ -175,6 +186,7 @@ return {
             }
           },
         },
+
       },
     }
 
@@ -185,6 +197,8 @@ return {
     telescope.load_extension("diff")
     telescope.load_extension("bookmarks")
     telescope.load_extension("smart_history")
+    telescope.load_extension("notify")
+    setup_telescope_notify_dropdown(telescope, telescope_themes)
 
     local function telescope_builtin_buffers(show_all)
       telescope_builtin.buffers({
@@ -215,6 +229,11 @@ return {
       telescope.extensions.live_grep_args.live_grep_args(telescope_themes.get_dropdown({}))
     end
 
+    local function telescope_extension_notify()
+      -- 复用前面对 notify 扩展的包装逻辑，保持快捷键与 :Telescope notify 的默认主题一致。
+      telescope.extensions.notify.notify()
+    end
+
     local keymap = vim.keymap.set
     keymap("n", "<leader>fb", function() telescope_builtin_buffers(false) end, { desc = "Telescope Buffers" })
     keymap("n", "<leader>fB", function() telescope_builtin_buffers(true) end,
@@ -225,6 +244,7 @@ return {
     keymap("n", "<leader>fg", telescope_builtin_live_grep_args, { desc = "Telescope Live Grep" })
     keymap("n", "<leader>fo", function() telescope_builtin.oldfiles() end, { desc = "Telescope Oldfiles" })
     keymap("n", "<leader>fh", function() telescope_builtin.help_tags() end, { desc = "Telescope Help Tags" })
+    keymap("n", "<leader>fn", telescope_extension_notify, { desc = "Telescope Notifications" })
     keymap("n", "<leader>ft", function() telescope_builtin.filetypes() end, { desc = "Telescope Filetypes" })
     keymap("n", "<leader>fs", "<Cmd>Telescope workspaces workspaces<CR>", { silent = true, desc = "Open Workspaces" })
     keymap("n", "<leader>ma", "<Cmd>Telescope bookmarks bookmarks<CR>", { silent = true, desc = "Open Bookmarks" })

@@ -31,6 +31,7 @@ return {
             scope_color = "",
             colored_indent_levels = true,
           },
+          notify = true,
         },
       }
 
