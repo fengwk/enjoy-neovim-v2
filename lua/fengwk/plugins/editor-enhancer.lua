@@ -1,32 +1,33 @@
 local globals = require "fengwk.globals"
 local utils = require "fengwk.utils"
 
-local function setup_print_notify_bridge()
-  _G.print = function(...)
-    if #vim.api.nvim_list_uis() == 0 then
-      return
-    end
-
-    local args = { ... }
-    local parts = vim.tbl_map(function(value)
-      if value == nil then
-        return "nil"
-      end
-      return tostring(value)
-    end, args)
-    local message = table.concat(parts, "\t")
-
-    local function notify_print()
-      pcall(vim.notify, message, vim.log.levels.INFO, { title = "print" })
-    end
-
-    if vim.in_fast_event() then
-      vim.schedule(notify_print)
-    else
-      notify_print()
-    end
-  end
-end
+-- 桥接 print 会出 bug，如 nvimtree 的 pick 就会失效
+-- local function setup_print_notify_bridge()
+--   _G.print = function(...)
+--     if #vim.api.nvim_list_uis() == 0 then
+--       return
+--     end
+--
+--     local args = { ... }
+--     local parts = vim.tbl_map(function(value)
+--       if value == nil then
+--         return "nil"
+--       end
+--       return tostring(value)
+--     end, args)
+--     local message = table.concat(parts, "\t")
+--
+--     local function notify_print()
+--       pcall(vim.notify, message, vim.log.levels.INFO, { title = "print" })
+--     end
+--
+--     if vim.in_fast_event() then
+--       vim.schedule(notify_print)
+--     else
+--       notify_print()
+--     end
+--   end
+-- end
 
 -- 编辑器增强插件
 return {
@@ -238,7 +239,7 @@ return {
       local notify = require "notify"
       notify.setup(opts)
       vim.notify = notify
-      setup_print_notify_bridge()
+      -- setup_print_notify_bridge()
     end,
   },
 }
