@@ -124,6 +124,21 @@ local function on_normal_enter()
   auto_switch_im("out")
 end
 
+-- 仅在离开插入/选择模式回到普通模式时切换回英文。
+-- 避免 Visual -> Normal 这类场景误触发 Windows/WSL 输入法切换。
+local function on_mode_changed_to_normal(ev)
+  local match = ev and ev.match or ""
+  local old_mode, new_mode = string.match(match, "^(.-):(.-)$")
+  if new_mode ~= "n" or old_mode == nil or old_mode == "" then
+    return
+  end
+
+  local old_mode_head = string.sub(old_mode, 1, 1)
+  if old_mode_head == "i" or old_mode_head == "s" or old_mode_head == "S" then
+    on_normal_enter()
+  end
+end
+
 -- 为 on_focus_gained 创建一个闭包，以便传递节流后的 on_normal_enter
 local function create_on_focus_gained(normal_enter_cb)
   return function()
@@ -142,6 +157,7 @@ function M.setup(user_config)
   -- 创建经过节流优化的回调函数
   local timeout = M.config.throttle_timeout
   local throttled_on_insert_enter = utils.throttle(on_insert_enter, timeout)
+  local throttled_on_mode_changed_to_normal = utils.throttle(on_mode_changed_to_normal, timeout)
   local throttled_on_normal_enter = utils.throttle(on_normal_enter, timeout)
   local on_focus_gained = create_on_focus_gained(throttled_on_normal_enter)
 
@@ -161,13 +177,13 @@ function M.setup(user_config)
   -- 进入普通模式时切换回英文
   vim.api.nvim_create_autocmd(
     { "ModeChanged" },
-    { group = group, pattern = "*:n", callback = throttled_on_normal_enter }
+    { group = group, pattern = "*:n", callback = throttled_on_mode_changed_to_normal }
   )
 
-  -- 在非 Windows 系统上，在启动完成后与重新获得焦点时校正普通模式输入法状态。
-  -- 这样可以保留原先“普通模式尽量保持英文”的行为，同时避免在启动阶段因
-  -- BufCreate/BufWinEnter 触发额外的外部命令调用。
-  if utils.os ~= "win" then
+  -- 仅在使用 fcitx5 的 Linux/macOS 上，在启动完成后与重新获得焦点时校正普通模式输入法状态。
+  -- WSL 走的是 Windows 输入法切换链路，FocusGained 上再次触发“out”会与
+  -- Windows 的窗口级输入法状态恢复互相干扰，导致重新聚焦时出现反向切换。
+  if utils.os ~= "win" and utils.os ~= "wsl" then
     vim.api.nvim_create_autocmd(
       { "VimEnter", "FocusGained" },
       { group = group, pattern = "*", callback = on_focus_gained }
