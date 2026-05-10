@@ -105,7 +105,8 @@ end
 -- @param mode "in" 表示进入插入/选择模式, "out" 表示离开
 local function auto_switch_im(mode)
   if utils.os == "win" or utils.os == "wsl" then
-    auto_switch_mspy(mode)
+    -- TODO 目前输入法输入过程中导致失焦再聚焦会有bug
+    -- auto_switch_mspy(mode)
   else -- 默认为使用 fcitx5 的 Linux/macOS
     auto_switch_fcitx5(mode)
   end
