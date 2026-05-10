@@ -1,0 +1,37 @@
+lua/fengwk/core/options.lua
+  1df2072cdb1a8323 101
+lua/fengwk/custom/im-switch.lua
+  1df2072cdb1a8323 108-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "b6d8ac80c4188b3d904f8c30d60a02d3f630ad35",
+  "prompts": {
+    "1df2072cdb1a8323": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1ec9cfb83ffec7kkEopINVVTx4",
+        "model": "openai/gpt-5.4"
+      },
+      "human_author": "fengwk",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 14,
+      "accepted_lines": 3,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "lua/fengwk/custom/im-switch.lua": {
+          "additions": 2,
+          "deletions": 1,
+          "accepted_lines": 2
+        },
+        "lua/fengwk/core/options.lua": {
+          "additions": 1,
+          "deletions": 13,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
