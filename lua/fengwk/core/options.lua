@@ -97,8 +97,20 @@ if os.getenv("SSH_TTY") ~= nil then
       end,
     },
   }
+elseif utils.os == "wsl" and utils.has_cmd("win32yank.exe") then
+  vim.g.clipboard = {
+    name = 'win32yank-wsl',
+    copy = {
+      ['+'] = 'win32yank.exe -i --crlf',
+      ['*'] = 'win32yank.exe -i --crlf',
+    },
+    paste = {
+      ['+'] = 'win32yank.exe -o --lf',
+      ['*'] = 'win32yank.exe -o --lf',
+    },
+    cache_enabled = 0,
+  }
 elseif os.getenv("WAYLAND_DISPLAY") ~= nil and utils.has_cmd("wl-copy") and utils.has_cmd("wl-paste") then
-  -- WSLg 下优先通过 Wayland 访问系统剪切板，避免调用 Windows 可执行程序卡住。
   vim.g.clipboard = {
     name = 'wl-clipboard',
     copy = {
