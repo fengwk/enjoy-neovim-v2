@@ -50,6 +50,17 @@ local function get_buffer_file(bufnr)
   return normalize_path(file)
 end
 
+-- 通知 markdown-preview 刷新指定 buffer。
+-- 这里直接使用 node channel id，避免 mkdp#rpc#preview_refresh 只能刷新当前 buffer 的限制。
+local function notify_preview_refresh(bufnr)
+  local channel_id = vim.g.mkdp_node_channel_id
+  if type(channel_id) ~= "number" or channel_id <= 0 then
+    return
+  end
+
+  pcall(vim.fn.rpcnotify, channel_id, "refresh_content", { bufnr = bufnr })
+end
+
 -- 当前实现按“文件”持久化，而不是按项目持久化。
 -- 文件名直接使用绝对路径的 sha256，避免状态目录下出现复杂路径层级。
 local function get_state_file(file)
@@ -151,6 +162,7 @@ local function load_state(file)
           line = tonumber(item.line) or 1,
           col = tonumber(item.col) or 1,
           origin_text = tostring(item.origin_text),
+          selected_text = item.selected_text and tostring(item.selected_text) or nil,
           comment = tostring(item.comment),
         })
       end
@@ -185,6 +197,48 @@ end
 local function get_line_text(bufnr, line)
   local lines = vim.api.nvim_buf_get_lines(bufnr, line - 1, line, false)
   return lines[1] or ""
+end
+
+-- 按 1-based byte range 读取 buffer 文本，end_col 为 exclusive。
+local function get_text_in_range(bufnr, start_line, start_col, end_line, end_col)
+  local lines = vim.api.nvim_buf_get_text(bufnr, start_line - 1, start_col - 1, end_line - 1, end_col - 1, {})
+  return table.concat(lines, "\n")
+end
+
+-- 按完整行范围读取文本，用于 preview 侧块级评论的降级写入。
+local function get_text_in_lines(bufnr, start_line, end_line)
+  local lines = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false)
+  return table.concat(lines, "\n")
+end
+
+-- 在块级原文中定位 selected_text 的精确起点；仅当命中唯一时返回行列。
+local function locate_selected_text_within_block(origin_text, start_line, selected_text)
+  if selected_text == "" then
+    return nil, nil
+  end
+
+  local first_start = origin_text:find(selected_text, 1, true)
+  if not first_start then
+    return nil, nil
+  end
+
+  local second_start = origin_text:find(selected_text, first_start + 1, true)
+  if second_start then
+    return nil, nil
+  end
+
+  local line = start_line
+  local col = 1
+  for index = 1, first_start - 1 do
+    if origin_text:sub(index, index) == "\n" then
+      line = line + 1
+      col = 1
+    else
+      col = col + 1
+    end
+  end
+
+  return line, col
 end
 
 -- 从给定锚点提取当前 buffer 中的文本，长度与 origin_text 对齐。
@@ -652,6 +706,97 @@ local function get_export_context(bufnr)
   return file, state, resolved_comments
 end
 
+local function get_comment_selected_text(comment)
+  return comment.selected_text or comment.origin_text
+end
+
+local function copy_to_clipboard(content)
+  vim.fn.setreg('"', content)
+  vim.fn.setreg('+', content)
+  vim.fn.setreg('*', content)
+end
+
+local function build_export_content(bufnr, opts)
+  opts = opts or {}
+  local file, state, resolved_comments = get_export_context(bufnr)
+  if not file then
+    if not opts.silent_warn then
+      notify("Current buffer has no file path", vim.log.levels.WARN)
+    end
+    return nil, state
+  end
+
+  if not state or #state.comments == 0 then
+    if not opts.silent_warn then
+      notify("No review comments for current file", vim.log.levels.WARN)
+    end
+    return nil, state
+  end
+
+  if #resolved_comments == 0 then
+    if not opts.silent_warn then
+      notify("No exportable review comments for current file", vim.log.levels.WARN)
+    end
+    return nil, state
+  end
+
+  local lines = {
+    string.format("File: %s", file),
+    "",
+  }
+
+  for _, comment in ipairs(resolved_comments) do
+    table.insert(lines, "---")
+    table.insert(lines, "")
+    table.insert(lines, format_export_line_label(comment))
+    table.insert(lines, "")
+    table.insert(lines, "Selected Text")
+    table.insert(lines, "```")
+    for _, line in ipairs(split_lines(get_comment_selected_text(comment))) do
+      table.insert(lines, line)
+    end
+    table.insert(lines, "```")
+    table.insert(lines, "")
+    table.insert(lines, "User Comment")
+    table.insert(lines, "```")
+    for _, line in ipairs(split_lines(comment.comment)) do
+      table.insert(lines, line)
+    end
+    table.insert(lines, "```")
+    table.insert(lines, "")
+  end
+
+  return table.concat(lines, "\n"), state
+end
+
+local function clear_buffer_comments(bufnr, opts)
+  opts = opts or {}
+  local file = get_buffer_file(bufnr)
+  if not file then
+    if not opts.silent_warn then
+      notify("Current buffer has no file path", vim.log.levels.WARN)
+    end
+    return false
+  end
+
+  local state = load_state(file)
+  if #state.comments == 0 then
+    if not opts.silent_warn then
+      notify("No review comments for current file", vim.log.levels.WARN)
+    end
+    return false
+  end
+
+  state.comments = {}
+  state.resolved_comments = {}
+  state.unresolved_count = 0
+  state.last_tick = nil
+  save_state(file)
+  render_buffer(bufnr)
+  notify_preview_refresh(bufnr)
+  return true
+end
+
 -- 跳转到当前文件中的上一个/下一个可解析 review comment。
 local function jump_comment(direction)
   local bufnr = vim.api.nvim_get_current_buf()
@@ -768,6 +913,7 @@ function M.add(opts)
     sort_comments(state.comments)
     save_state(selection.file)
     render_buffer(bufnr)
+    notify_preview_refresh(bufnr)
   end)
 end
 
@@ -779,6 +925,7 @@ function M.delete()
       state.last_tick = nil
       save_state(state.file)
       render_buffer(vim.api.nvim_get_current_buf())
+      notify_preview_refresh(vim.api.nvim_get_current_buf())
     end
   end)
 end
@@ -796,99 +943,221 @@ function M.edit()
       state.last_tick = nil
       save_state(state.file)
       render_buffer(vim.api.nvim_get_current_buf())
+      notify_preview_refresh(vim.api.nvim_get_current_buf())
     end)
   end)
 end
 
 -- 清空当前文件的全部 comment；清空后会删除对应 JSON 文件。
 function M.clear(opts)
-  opts = opts or {}
-  local bufnr = vim.api.nvim_get_current_buf()
-  local file = get_buffer_file(bufnr)
-  if not file then
-    if not opts.silent_warn then
-      notify("Current buffer has no file path", vim.log.levels.WARN)
-    end
-    return false
-  end
-
-  local state = load_state(file)
-  if #state.comments == 0 then
-    if not opts.silent_warn then
-      notify("No review comments for current file", vim.log.levels.WARN)
-    end
-    return false
-  end
-
-  state.comments = {}
-  state.resolved_comments = {}
-  state.unresolved_count = 0
-  state.last_tick = nil
-  save_state(file)
-  render_buffer(bufnr)
-  return true
+  return clear_buffer_comments(vim.api.nvim_get_current_buf(), opts)
 end
 
 -- 导出当前文件的全部 comment，格式固定为便于复制给外部 agent 的块结构。
 function M.export(opts)
   opts = opts or {}
   local bufnr = vim.api.nvim_get_current_buf()
-  local file, state, resolved_comments = get_export_context(bufnr)
-  if not file then
-    if not opts.silent_warn then
-      notify("Current buffer has no file path", vim.log.levels.WARN)
-    end
+  local content, state = build_export_content(bufnr, opts)
+  if not content then
     return false
   end
 
-  if not state or #state.comments == 0 then
-    if not opts.silent_warn then
-      notify("No review comments for current file", vim.log.levels.WARN)
-    end
-    return false
-  end
-
-  if #resolved_comments == 0 then
-    if not opts.silent_warn then
-      notify("No exportable review comments for current file", vim.log.levels.WARN)
-    end
-    return false
-  end
-
-  local lines = {
-    string.format("File: %s", file),
-    "",
-  }
-
-  for index, comment in ipairs(resolved_comments) do
-    if index > 1 then
-      table.insert(lines, "---")
-      table.insert(lines, "")
-    end
-    table.insert(lines, string.format("Selected Text, %s", format_export_line_label(comment)))
-    table.insert(lines, "```")
-    for _, line in ipairs(split_lines(comment.origin_text)) do
-      table.insert(lines, line)
-    end
-    table.insert(lines, "```")
-    table.insert(lines, "")
-    table.insert(lines, "User Comment")
-    table.insert(lines, "```")
-    for _, line in ipairs(split_lines(comment.comment)) do
-      table.insert(lines, line)
-    end
-    table.insert(lines, "```")
-    table.insert(lines, "")
-  end
-
-  local content = table.concat(lines, "\n")
-  vim.fn.setreg('"', content)
-  vim.fn.setreg("+", content)
-  vim.fn.setreg("*", content)
+  copy_to_clipboard(content)
   if state.unresolved_count > 0 then
     notify(string.format("Review comments exported to clipboard (%d unresolved comments skipped)", state.unresolved_count), vim.log.levels.WARN)
   end
   return true
+end
+
+-- 将当前 buffer 的可解析 comment 导出为 mkdp 可消费的快照格式。
+function M.mkdp_snapshot(bufnr)
+  bufnr = tonumber(bufnr) or vim.api.nvim_get_current_buf()
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return {
+      revision = nil,
+      comments = {},
+    }
+  end
+
+  local _, state = resolve_buffer_comments(bufnr)
+  local comments = {}
+  for _, comment in ipairs(state and state.resolved_comments or {}) do
+    local end_line, end_col = get_comment_end(comment)
+    table.insert(comments, {
+      id = comment.id,
+      line = comment.line,
+      col = comment.col,
+      end_line = end_line,
+      end_col = end_col + 1,
+      origin_text = comment.origin_text,
+      selected_text = get_comment_selected_text(comment),
+      comment = comment.comment,
+    })
+  end
+
+  return {
+    revision = vim.api.nvim_buf_get_changedtick(bufnr),
+    comments = comments,
+  }
+end
+
+-- 处理来自 mkdp 的 comment 变更请求；目前以 create/edit/delete 为最小支持集。
+function M.mkdp_apply(bufnr, action, payload)
+  bufnr = tonumber(bufnr) or vim.api.nvim_get_current_buf()
+  payload = type(payload) == "table" and payload or {}
+
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return { ok = false, error = "Invalid buffer" }
+  end
+
+  local file = get_buffer_file(bufnr)
+  if not file then
+    return { ok = false, error = "Current buffer has no file path" }
+  end
+
+  if tonumber(payload.revision) and tonumber(payload.revision) ~= vim.api.nvim_buf_get_changedtick(bufnr) then
+    return { ok = false, error = "Buffer changed, please refresh preview and retry" }
+  end
+
+  local state = load_state(file)
+
+  if action == "create" then
+    local kind = tostring(payload.kind or "range")
+    local start_line = tonumber(payload.start_line)
+    local start_col = tonumber(payload.start_col)
+    local end_line = tonumber(payload.end_line)
+    local end_col = tonumber(payload.end_col)
+    local comment_text = vim.trim(tostring(payload.comment or ""))
+
+    if comment_text == "" then
+      return { ok = false, error = "Comment is empty" }
+    end
+
+    local origin_text
+    local selected_text = vim.trim(tostring(payload.selected_text or ""))
+    if kind == "block" then
+      if not start_line or not end_line then
+        return { ok = false, error = "Missing review comment block range" }
+      end
+      if start_line < 1 or end_line < start_line then
+        return { ok = false, error = "Invalid review comment block range" }
+      end
+
+      start_col = 1
+      origin_text = get_text_in_lines(bufnr, start_line, end_line)
+      local exact_line, exact_col = locate_selected_text_within_block(origin_text, start_line, selected_text)
+      if exact_line and exact_col then
+        start_line = exact_line
+        start_col = exact_col
+        origin_text = selected_text
+      end
+    else
+      if not start_line or not start_col or not end_line or not end_col then
+        return { ok = false, error = "Missing review comment range" }
+      end
+      if start_line < 1 or start_col < 1 or end_line < start_line or (end_line == start_line and end_col <= start_col) then
+        return { ok = false, error = "Invalid review comment range" }
+      end
+
+      origin_text = get_text_in_range(bufnr, start_line, start_col, end_line, end_col)
+    end
+
+    if origin_text == "" then
+      return { ok = false, error = "Selected text is empty" }
+    end
+
+    local created = {
+      id = tostring(vim.uv.hrtime()),
+      file = file,
+      line = start_line,
+      col = start_col,
+      origin_text = origin_text,
+      selected_text = selected_text ~= "" and selected_text or nil,
+      comment = comment_text,
+    }
+
+    table.insert(state.comments, created)
+    sort_comments(state.comments)
+    state.resolved_comments = nil
+    state.last_tick = nil
+    save_state(file)
+    render_buffer(bufnr)
+
+    return {
+      ok = true,
+      comment = created,
+    }
+  end
+
+  if action == "edit" then
+    local comment_id = tostring(payload.id or "")
+    local comment_text = vim.trim(tostring(payload.comment or ""))
+    if comment_id == "" then
+      return { ok = false, error = "Missing review comment id" }
+    end
+    if comment_text == "" then
+      return { ok = false, error = "Comment is empty" }
+    end
+
+    for _, comment in ipairs(state.comments) do
+      if comment.id == comment_id then
+        comment.comment = comment_text
+        state.resolved_comments = nil
+        state.last_tick = nil
+        save_state(file)
+        render_buffer(bufnr)
+        return { ok = true, comment = comment }
+      end
+    end
+
+    return { ok = false, error = "Review comment not found" }
+  end
+
+  if action == "delete" then
+    local comment_id = tostring(payload.id or "")
+    if comment_id == "" then
+      return { ok = false, error = "Missing review comment id" }
+    end
+
+    if remove_comment(state, comment_id) then
+      state.resolved_comments = nil
+      state.last_tick = nil
+      save_state(file)
+      render_buffer(bufnr)
+      return { ok = true }
+    end
+
+    return { ok = false, error = "Review comment not found" }
+  end
+
+  if action == "copy" then
+    local content, export_state = build_export_content(bufnr, { silent_warn = true })
+    if not content then
+      return { ok = false, error = "No exportable review comments for current file" }
+    end
+
+    copy_to_clipboard(content)
+    return {
+      ok = true,
+      unresolved_count = export_state and export_state.unresolved_count or 0,
+    }
+  end
+
+  if action == "copy_and_clear" then
+    local content, export_state = build_export_content(bufnr, { silent_warn = true })
+    if not content then
+      return { ok = false, error = "No exportable review comments for current file" }
+    end
+
+    copy_to_clipboard(content)
+    clear_buffer_comments(bufnr, { silent_warn = true })
+    return {
+      ok = true,
+      unresolved_count = export_state and export_state.unresolved_count or 0,
+    }
+  end
+
+  return { ok = false, error = string.format("Unsupported review comment action: %s", tostring(action)) }
 end
 
 -- setup 负责注册命令、定义高亮和自动命令。
@@ -897,6 +1166,18 @@ function M.setup()
     return
   end
   initialized = true
+
+  vim.cmd [[
+    function! ReviewCommentsMkdpSnapshot(bufnr) abort
+      return luaeval("require('fengwk.custom.review-comments').mkdp_snapshot(_A)", a:bufnr)
+    endfunction
+
+    function! ReviewCommentsMkdpApply(bufnr, action, payload) abort
+      return luaeval("require('fengwk.custom.review-comments').mkdp_apply(_A[1], _A[2], _A[3])", [a:bufnr, a:action, a:payload])
+    endfunction
+  ]]
+  vim.g.mkdp_review_comments_snapshot_fn = "ReviewCommentsMkdpSnapshot"
+  vim.g.mkdp_review_comments_apply_fn = "ReviewCommentsMkdpApply"
 
   -- 行尾标记使用较弱的提示色；原文范围沿用 DiagnosticInfo 的颜色并额外添加 undercurl。
   vim.api.nvim_set_hl(0, "ReviewCommentMarker", { link = "DiagnosticHint", default = true })
