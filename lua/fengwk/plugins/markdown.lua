@@ -5,7 +5,8 @@ return {
     -- 依赖 npm typescript
     "fengwk/markdown-preview.nvim",
     branch = "dev",
-    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+    event = "VeryLazy",
+    lazy = false, -- 此插件目前不能使用 lazy 方式否则会导致无法注册
     keys = {
       { "<leader>mk", "<cmd>MarkdownPreviewToggle<cr>" }
     },
@@ -16,11 +17,12 @@ return {
       vim.g.mkdp_port = "" -- 自动端口防止多工程打开的时候端口冲突
       vim.g.mkdp_open_ip = "127.0.0.1" -- 公司的安全软件会禁用 localhost
       vim.g.mkdp_theme = globals.theme.bg
-      vim.g.mkdp_filetypes = globals.markdown_filetypes
+      vim.g.mkdp_command_for_global = 1
+      -- vim.g.mkdp_filetypes = globals.markdown_filetypes
 
       -- vim.keymap.set("n", "<leader>mk", "<Cmd>MarkdownPreviewToggle<CR>", { silent = true, buffer = 0 })
     end,
-    ft = globals.markdown_filetypes,
+    -- ft = globals.markdown_filetypes,
   },
   -- {
   --   -- https://github.com/toppair/peek.nvim
@@ -37,17 +39,17 @@ return {
   --     vim.api.nvim_create_user_command("PeekClose", require("peek").close, {})
   --   end,
   -- },
-  {
-    "MeanderingProgrammer/render-markdown.nvim",
-    ft = globals.markdown_filetypes, -- 仅在 markdown 文件类型时加载
-    opts = {
-      file_types = globals.markdown_filetypes,
-      -- https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/177
-      render_modes = { "n", "v", "i", "c" },
-    },
-    dependencies = {
-      "nvim-treesitter/nvim-treesitter",
-      "nvim-tree/nvim-web-devicons"
-    },
-  },
+  -- {
+  --   "MeanderingProgrammer/render-markdown.nvim",
+  --   ft = globals.markdown_filetypes, -- 仅在 markdown 文件类型时加载
+  --   opts = {
+  --     file_types = globals.markdown_filetypes,
+  --     -- https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/177
+  --     render_modes = { "n", "v", "i", "c" },
+  --   },
+  --   dependencies = {
+  --     "nvim-treesitter/nvim-treesitter",
+  --     "nvim-tree/nvim-web-devicons"
+  --   },
+  -- },
 }
