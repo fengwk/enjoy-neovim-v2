@@ -38,4 +38,13 @@ return {
       vim.cmd.colorscheme "catppuccin"
     end,
   },
+  -- {
+  --   -- https://github.com/eddyekofo94/gruvbox-flat.nvim
+  --   "Mofiqul/vscode.nvim",
+  --   priority = 1000 ,
+  --   enabled = true,
+  --   config = function()
+  --       vim.cmd([[colorscheme vscode]])
+  --   end,
+  -- },
 }
