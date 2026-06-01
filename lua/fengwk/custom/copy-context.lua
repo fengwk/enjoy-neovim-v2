@@ -74,11 +74,11 @@ end
 -- 将文件路径与可选代码片段组装为统一上下文格式。
 local function build_context_text(file_path, selection)
   if not selection or not selection.text or selection.text == "" then
-    return string.format("File: %s", file_path)
+    return string.format("%s", file_path)
   end
 
   return table.concat({
-    string.format("File: %s", file_path),
+    string.format("%s", file_path),
     "",
     format_line_label(selection.start_line, selection.end_line),
     "```",
