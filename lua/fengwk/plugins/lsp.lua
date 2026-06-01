@@ -367,13 +367,13 @@ return {
         if setup then
           setup(conf)
         else
-          utils.setup_lsp(server, conf, true)
+          utils.setup_lsp(server, conf, false)
         end
       end
 
-      vim.keymap.set("n", "<leader>ll", "<Cmd>LspStart<CR>", {})
-      vim.keymap.set("n", "<leader>ls", "<Cmd>LspStop<CR>", {})
-      vim.keymap.set("n", "<leader>lr", "<Cmd>LspRestart<CR>", {})
+      -- vim.keymap.set("n", "<leader>ll", "<Cmd>LspStart<CR>", {})
+      -- vim.keymap.set("n", "<leader>ls", "<Cmd>LspStop<CR>", {})
+      -- vim.keymap.set("n", "<leader>lr", "<Cmd>LspRestart<CR>", {})
 
       -- https://github.com/jay-babu/mason-nvim-dap.nvim
       local dap = require "dap"

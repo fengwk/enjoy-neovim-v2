@@ -383,7 +383,7 @@ end
 
 
 local function setup(base_conf)
-  utils.setup_lsp("jdtls", build_conf(base_conf), true)
+  utils.setup_lsp("jdtls", build_conf(base_conf), false)
 end
 
 return setup
