@@ -741,7 +741,7 @@ local function build_export_content(bufnr, opts)
   end
 
   local lines = {
-    string.format("File: %s", file),
+    string.format("Review File: %s", file),
     "",
   }
 
