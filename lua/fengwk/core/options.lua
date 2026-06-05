@@ -72,44 +72,66 @@ vim.o.list = true
 -- extends  右侧超出屏幕范围部分
 vim.o.listchars = "tab:>-,trail:·,precedes:«,extends:»,"
 
--- 使用系统剪切板作为无名寄存器
--- vim.o.clipboard = 'unnamed'
--- https://stackoverflow.com/questions/30691466/what-is-difference-between-vims-clipboard-unnamed-and-unnamedplus-settings
--- vim.cmd("set clipboard^=unnamed,unnamedplus")
-vim.opt.clipboard:append("unnamedplus")
--- vim.o.clipboard = 'unnamedplus'
+-- clipboard 控制未显式指定寄存器时，普通 y/d/p 使用哪个系统剪贴板。
+-- unnamedplus: 将无名寄存器 `"` 绑定到 `+` / CLIPBOARD，即 Ctrl-C/Ctrl-V 语义。
+-- unnamed: 将无名寄存器 `"` 绑定到 `*`；在 Linux/X11 下通常是 PRIMARY selection，即鼠标选中/中键粘贴。
+-- append("unnamedplus") 会保留已有值；如果此前已有 unnamed，y/d 会额外同步到 `*`。
+-- 这里显式只使用 unnamedplus，避免 PRIMARY selection 参与普通 y/d/p。
+-- 参考：https://stackoverflow.com/questions/30691466/what-is-difference-between-vims-clipboard-unnamed-and-unnamedplus-settings
+vim.opt.clipboard = "unnamedplus"
+
+local osc52_ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
+
+local function unnamed_paste()
+  return vim.split(vim.fn.getreg('"'), "\n"), vim.fn.getregtype('"')
+end
+
 -- ssh 环境支持 osc52，使 ssh 连接也能共享剪切板。
-if os.getenv("SSH_TTY") ~= nil then
+if os.getenv("SSH_TTY") ~= nil and osc52_ok then
   vim.g.clipboard = {
     name = 'OSC 52',
     copy = {
-      ['+'] = require('vim.ui.clipboard.osc52').copy '+',
-      ['*'] = require('vim.ui.clipboard.osc52').copy '*',
+      ['+'] = osc52.copy('+'),
+      ['*'] = osc52.copy('*'),
     },
-    -- osc52的黏贴会卡住
+    -- osc52 的黏贴会卡住。
     -- https://zhuanlan.zhihu.com/p/712125953
     paste = {
-      ["+"] = function(_)
-        return vim.split(vim.fn.getreg '"', "\n")
-      end,
-      ["*"] = function(_)
-        return vim.split(vim.fn.getreg '"', "\n")
-      end,
-    },
-  }
-elseif utils.os == "wsl" and utils.has_cmd("win32yank.exe") then
-  vim.g.clipboard = {
-    name = 'win32yank-wsl',
-    copy = {
-      ['+'] = 'win32yank.exe -i --crlf',
-      ['*'] = 'win32yank.exe -i --crlf',
-    },
-    paste = {
-      ['+'] = 'win32yank.exe -o --lf',
-      ['*'] = 'win32yank.exe -o --lf',
+      ['+'] = unnamed_paste,
+      ['*'] = unnamed_paste,
     },
     cache_enabled = 0,
   }
+elseif utils.os == "wsl" then
+  local copy = nil
+  if osc52_ok then
+    copy = {
+      ['+'] = osc52.copy('+'),
+      ['*'] = osc52.copy('*'),
+    }
+  elseif utils.has_cmd("win32yank.exe") then
+    copy = {
+      ['+'] = 'timeout 2s win32yank.exe -i --crlf',
+      ['*'] = 'timeout 2s win32yank.exe -i --crlf',
+    }
+  end
+
+  local paste_command = nil
+  if utils.has_cmd("win32yank.exe") then
+    paste_command = 'timeout 2s win32yank.exe -o --lf'
+  end
+
+  if copy ~= nil and paste_command ~= nil then
+    vim.g.clipboard = {
+      name = 'wsl-osc52-win32yank',
+      copy = copy,
+      paste = {
+        ['+'] = paste_command,
+        ['*'] = paste_command,
+      },
+      cache_enabled = 0,
+    }
+  end
 elseif os.getenv("WAYLAND_DISPLAY") ~= nil and utils.has_cmd("wl-copy") and utils.has_cmd("wl-paste") then
   vim.g.clipboard = {
     name = 'wl-clipboard',
