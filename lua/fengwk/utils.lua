@@ -2,8 +2,6 @@
 --
 -- 本模块提供了一系列通用的辅助函数
 
-local globals = require "fengwk.globals"
-
 local utils = {}
 
 local uname = vim.uv.os_uname()
@@ -145,75 +143,6 @@ function utils.debounce(fn, timeout)
     timer = vim.defer_fn(function()
       fn(unpack(args))
     end, timeout)
-  end
-end
-
--- 标记当前是否在 tmux 环境中
-local is_in_tmux = os.getenv("TMUX") ~= nil
-local auto_window_title_max = tonumber(os.getenv("AUTO_WINDOW_TITLE_MAX")) or 32
--- 开启 Neovim 的标题设置功能, 对非 tmux 环境生效
-vim.o.title = true
-
---- 截断自动生成的窗口/终端标题，避免标题过长影响展示。
--- @param title string
--- @return string
-local function truncate_auto_title(title)
-  local truncation_suffix = ".."
-  if #title <= auto_window_title_max then
-    return title
-  end
-  return string.sub(title, 1, auto_window_title_max - #truncation_suffix) .. truncation_suffix
-end
-
---- 在 tmux 中直接更新当前 window 名称。
--- @param title string
-local function rename_tmux_window(title)
-  local next_name = truncate_auto_title(title)
-  vim.fn.system({ "tmux", "rename-window", next_name })
-end
-
---- 设置终端和 tmux 标题的统一函数
--- @param title string | nil 要设置的标题。如果为 nil 或空，则表示重置。
-local function set_title(title)
-  -- 对 title 进行基本的清洁，防止空值
-  title = title or ""
-  if is_in_tmux then
-    rename_tmux_window(title)
-  else
-    -- 在非 tmux 环境中，使用 Neovim 的标准方式
-    vim.o.titlestring = truncate_auto_title(title)
-  end
-end
-
---- 更新当前终端标题, 需开启 Neovim 的标题设置功能
---- vim.o.title = true
-function utils.update_title()
-  if globals.is_special_ft() then
-    return
-  end
-  local filename = vim.fn.expand('%:t')
-  if string.len(filename) > 0 then
-    filename = " - " .. filename
-  else
-    filename = "" -- 如果没有文件名，则为空字符串
-  end
-  local cwd = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
-  -- 构建标题并直接赋值给 Neovim 的 titlestring 选项
-  local title = "nvim - " .. cwd .. filename
-  set_title(title)
-end
-
-function utils.reset_title()
-  if is_in_tmux then
-    -- 在 tmux 中，恢复为 shell 名称
-    local pwd = os.getenv('PWD') or ""
-    local shell = os.getenv('SHELL') or "sh"
-    shell = string.match(shell, "[^/]+$") or "shell"
-    local dir = string.match(pwd, '.*/(.*)') or ""
-    set_title(shell .. " - " .. dir)
-  else
-    -- 在普通终端中，清空 titlestring 即可让终端恢复默认标题
-    set_title("")
   end
 end
 
