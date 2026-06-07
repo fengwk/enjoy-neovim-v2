@@ -86,8 +86,8 @@ local function unnamed_paste()
   return vim.split(vim.fn.getreg('"'), "\n"), vim.fn.getregtype('"')
 end
 
--- ssh 环境支持 osc52，使 ssh 连接也能共享剪切板。
-if os.getenv("SSH_TTY") ~= nil and osc52_ok then
+-- ssh 或 tmux 环境支持 osc52，使远程连接和 tmux 会话都能共享剪切板。
+if (os.getenv("SSH_TTY") ~= nil or os.getenv("TMUX") ~= nil) and osc52_ok then
   vim.g.clipboard = {
     name = 'OSC 52',
     copy = {
