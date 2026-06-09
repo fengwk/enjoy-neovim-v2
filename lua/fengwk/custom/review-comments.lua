@@ -17,6 +17,8 @@ local group = vim.api.nvim_create_augroup("fengwk_review_comments", { clear = tr
 local initialized = false
 -- cache 以绝对路径为 key 缓存已加载的文件状态，减少重复读盘。
 local cache = {}
+-- temp_cache 仅保存未命名 buffer 的会话内 comment；buffer 首次写盘后再迁移到文件态。
+local temp_cache = {}
 -- refresh_timers 为每个 buffer 保存一个防抖定时器，避免高频编辑时重复全量解析。
 local refresh_timers = {}
 -- hover_win 记录当前浮窗，便于在移动光标或离开 buffer 时关闭。
@@ -170,17 +172,100 @@ local function load_state(file)
   end
 
   sort_comments(comments)
-  state = { file = file, comments = comments, resolved_comments = nil, unresolved_count = 0, last_tick = nil }
+  state = {
+    file = file,
+    comments = comments,
+    resolved_comments = nil,
+    unresolved_count = 0,
+    last_tick = nil,
+    is_temp = false,
+    label = file,
+  }
   cache[file] = state
   return state
 end
 
--- 保存状态时只做两种结果：
--- 1. comment 为空：删除 JSON 文件
--- 2. comment 非空：完整重写 JSON 文件
-local function save_state(file)
-  local state = load_state(file)
+-- 统一生成当前 buffer 的展示标签；未命名 buffer 使用 session 内可辨识的占位名。
+local function get_buffer_label(bufnr)
+  local file = get_buffer_file(bufnr)
+  if file then
+    return file
+  end
+
+  return string.format("[No Name] (buffer %d)", bufnr)
+end
+
+-- 未命名 buffer 的 comment 只保存在当前会话内，因此直接挂在 bufnr 上。
+local function get_temp_state(bufnr)
+  local state = temp_cache[bufnr]
+  if state then
+    state.label = get_buffer_label(bufnr)
+    return state
+  end
+
+  state = {
+    file = nil,
+    bufnr = bufnr,
+    comments = {},
+    resolved_comments = nil,
+    unresolved_count = 0,
+    last_tick = nil,
+    is_temp = true,
+    label = get_buffer_label(bufnr),
+  }
+  temp_cache[bufnr] = state
+  return state
+end
+
+-- 读取 buffer 对应的 comment 状态：
+-- 1. 若当前 buffer 已经处于临时 comment 模式，则始终复用临时状态
+-- 2. 否则优先按文件路径加载持久化状态
+-- 3. 无文件路径时回退到会话内临时状态
+local function load_buffer_state(bufnr)
+  local temp_state = temp_cache[bufnr]
+  if temp_state then
+    temp_state.label = get_buffer_label(bufnr)
+    return temp_state
+  end
+
+  local file = get_buffer_file(bufnr)
+  if file then
+    local state = load_state(file)
+    state.file = file
+    state.is_temp = false
+    state.label = file
+    return state
+  end
+
+  return get_temp_state(bufnr)
+end
+
+-- 保存状态时分为两类：
+-- 1. 文件态：持久化到 JSON
+-- 2. 临时态：仅回写到当前会话内存
+local function save_state(target)
+  local state = type(target) == "table" and target or load_state(target)
+  if not state then
+    return false
+  end
+
   sort_comments(state.comments)
+
+  if state.is_temp then
+    if #state.comments == 0 then
+      temp_cache[state.bufnr] = nil
+    else
+      state.label = get_buffer_label(state.bufnr)
+      temp_cache[state.bufnr] = state
+    end
+    return true
+  end
+
+  local file = state.file or target
+  if not file then
+    notify("Failed to save review comments: missing file path", vim.log.levels.ERROR)
+    return false
+  end
 
   if #state.comments == 0 then
     return delete_state_file(file)
@@ -191,6 +276,33 @@ local function save_state(file)
     file = file,
     comments = state.comments,
   })
+end
+
+-- 首次保存未命名 buffer 时，将会话内 comment 迁移到真实文件名下并落盘。
+local function promote_temp_state_to_file(bufnr)
+  local temp_state = temp_cache[bufnr]
+  local file = get_buffer_file(bufnr)
+  if not temp_state or not file then
+    return false
+  end
+
+  temp_cache[bufnr] = nil
+  if #temp_state.comments == 0 then
+    return true
+  end
+
+  local state = load_state(file)
+  for _, comment in ipairs(temp_state.comments) do
+    comment.file = file
+    table.insert(state.comments, comment)
+  end
+
+  sort_comments(state.comments)
+  state.resolved_comments = nil
+  state.unresolved_count = 0
+  state.last_tick = nil
+  save_state(state)
+  return true
 end
 
 -- 读取单行文本，是后续范围提取和定位比较的基础工具。
@@ -356,16 +468,15 @@ end
 -- 对当前 buffer 的全部 comment 做一次解析，但不会修改原始 comment 列表。
 -- 解析结果只缓存到 resolved_comments 中，失配 comment 仅在展示与导出时跳过。
 local function resolve_buffer_comments(bufnr)
-  local file = get_buffer_file(bufnr)
-  if not file then
+  local state = load_buffer_state(bufnr)
+  if not state then
     return nil, nil
   end
 
-  local state = load_state(file)
   local tick = vim.api.nvim_buf_get_changedtick(bufnr)
 
   if state.resolved_comments and state.last_tick == tick then
-    return file, state
+    return state.label, state
   end
 
   local resolved = {}
@@ -384,23 +495,22 @@ local function resolve_buffer_comments(bufnr)
   state.resolved_comments = resolved
   state.unresolved_count = unresolved_count
   state.last_tick = tick
-  return file, state
+  return state.label, state
 end
 
 -- 获取缓存中的解析结果。
 -- 当 refresh=false 时不会触发新的全量解析，适合 CursorMoved 这类高频场景。
 local function get_resolved_state(bufnr, refresh)
-  local file = get_buffer_file(bufnr)
-  if not file then
+  local state = load_buffer_state(bufnr)
+  if not state then
     return nil, nil
   end
 
-  local state = load_state(file)
   if refresh or not state.resolved_comments then
     return resolve_buffer_comments(bufnr)
   end
 
-  return file, state
+  return state.label, state
 end
 
 -- 根据 origin_text 计算 comment 作用范围的结束位置。
@@ -534,10 +644,8 @@ end
 -- 2. v 模式：取精确字符范围
 -- 3. V 与 <C-v>：统一简化为多行整段文本
 local function build_selection(bufnr, opts)
-  local file = get_buffer_file(bufnr)
-  if not file then
-    return nil, "Current buffer has no file path"
-  end
+  local state = load_buffer_state(bufnr)
+  local file = state.is_temp and nil or state.file
 
   if opts and opts.range > 0 then
     local mode = vim.fn.visualmode()
@@ -718,30 +826,24 @@ end
 
 local function build_export_content(bufnr, opts)
   opts = opts or {}
-  local file, state, resolved_comments = get_export_context(bufnr)
-  if not file then
-    if not opts.silent_warn then
-      notify("Current buffer has no file path", vim.log.levels.WARN)
-    end
-    return nil, state
-  end
+  local target, state, resolved_comments = get_export_context(bufnr)
 
   if not state or #state.comments == 0 then
     if not opts.silent_warn then
-      notify("No review comments for current file", vim.log.levels.WARN)
+      notify("No review comments for current buffer", vim.log.levels.WARN)
     end
     return nil, state
   end
 
   if #resolved_comments == 0 then
     if not opts.silent_warn then
-      notify("No exportable review comments for current file", vim.log.levels.WARN)
+      notify("No exportable review comments for current buffer", vim.log.levels.WARN)
     end
     return nil, state
   end
 
   local lines = {
-    string.format("Review File: %s", file),
+    string.format("Review File: %s", target or get_buffer_label(bufnr)),
     "",
   }
 
@@ -771,18 +873,10 @@ end
 
 local function clear_buffer_comments(bufnr, opts)
   opts = opts or {}
-  local file = get_buffer_file(bufnr)
-  if not file then
-    if not opts.silent_warn then
-      notify("Current buffer has no file path", vim.log.levels.WARN)
-    end
-    return false
-  end
-
-  local state = load_state(file)
+  local state = load_buffer_state(bufnr)
   if #state.comments == 0 then
     if not opts.silent_warn then
-      notify("No review comments for current file", vim.log.levels.WARN)
+      notify("No review comments for current buffer", vim.log.levels.WARN)
     end
     return false
   end
@@ -791,7 +885,7 @@ local function clear_buffer_comments(bufnr, opts)
   state.resolved_comments = {}
   state.unresolved_count = 0
   state.last_tick = nil
-  save_state(file)
+  save_state(state)
   render_buffer(bufnr)
   notify_preview_refresh(bufnr)
   return true
@@ -800,10 +894,10 @@ end
 -- 跳转到当前文件中的上一个/下一个可解析 review comment。
 local function jump_comment(direction)
   local bufnr = vim.api.nvim_get_current_buf()
-  local file, state = resolve_buffer_comments(bufnr)
+  local _, state = resolve_buffer_comments(bufnr)
   local comments = state and state.resolved_comments or {}
-  if not file or #comments == 0 then
-    notify("No review comments for current file", vim.log.levels.WARN)
+  if not state or #comments == 0 then
+    notify("No review comments for current buffer", vim.log.levels.WARN)
     return
   end
 
@@ -905,13 +999,13 @@ function M.add(opts)
       return
     end
 
-    local state = load_state(selection.file)
+    local state = load_buffer_state(bufnr)
     selection.comment = vim.trim(input)
     table.insert(state.comments, selection)
     state.resolved_comments = nil
     state.last_tick = nil
     sort_comments(state.comments)
-    save_state(selection.file)
+    save_state(state)
     render_buffer(bufnr)
     notify_preview_refresh(bufnr)
   end)
@@ -923,7 +1017,7 @@ function M.delete()
     if remove_comment(state, comment.id) then
       state.resolved_comments = nil
       state.last_tick = nil
-      save_state(state.file)
+      save_state(state)
       render_buffer(vim.api.nvim_get_current_buf())
       notify_preview_refresh(vim.api.nvim_get_current_buf())
     end
@@ -941,7 +1035,7 @@ function M.edit()
       comment.comment = vim.trim(input)
       state.resolved_comments = nil
       state.last_tick = nil
-      save_state(state.file)
+      save_state(state)
       render_buffer(vim.api.nvim_get_current_buf())
       notify_preview_refresh(vim.api.nvim_get_current_buf())
     end)
@@ -1010,16 +1104,12 @@ function M.mkdp_apply(bufnr, action, payload)
     return { ok = false, error = "Invalid buffer" }
   end
 
-  local file = get_buffer_file(bufnr)
-  if not file then
-    return { ok = false, error = "Current buffer has no file path" }
-  end
-
   if tonumber(payload.revision) and tonumber(payload.revision) ~= vim.api.nvim_buf_get_changedtick(bufnr) then
     return { ok = false, error = "Buffer changed, please refresh preview and retry" }
   end
 
-  local state = load_state(file)
+  local state = load_buffer_state(bufnr)
+  local file = state.is_temp and nil or state.file
 
   if action == "create" then
     local kind = tostring(payload.kind or "range")
@@ -1080,7 +1170,7 @@ function M.mkdp_apply(bufnr, action, payload)
     sort_comments(state.comments)
     state.resolved_comments = nil
     state.last_tick = nil
-    save_state(file)
+    save_state(state)
     render_buffer(bufnr)
 
     return {
@@ -1104,7 +1194,7 @@ function M.mkdp_apply(bufnr, action, payload)
         comment.comment = comment_text
         state.resolved_comments = nil
         state.last_tick = nil
-        save_state(file)
+        save_state(state)
         render_buffer(bufnr)
         return { ok = true, comment = comment }
       end
@@ -1122,7 +1212,7 @@ function M.mkdp_apply(bufnr, action, payload)
     if remove_comment(state, comment_id) then
       state.resolved_comments = nil
       state.last_tick = nil
-      save_state(file)
+      save_state(state)
       render_buffer(bufnr)
       return { ok = true }
     end
@@ -1133,7 +1223,7 @@ function M.mkdp_apply(bufnr, action, payload)
   if action == "copy" then
     local content, export_state = build_export_content(bufnr, { silent_warn = true })
     if not content then
-      return { ok = false, error = "No exportable review comments for current file" }
+      return { ok = false, error = "No exportable review comments for current buffer" }
     end
 
     copy_to_clipboard(content)
@@ -1146,7 +1236,7 @@ function M.mkdp_apply(bufnr, action, payload)
   if action == "copy_and_clear" then
     local content, export_state = build_export_content(bufnr, { silent_warn = true })
     if not content then
-      return { ok = false, error = "No exportable review comments for current file" }
+      return { ok = false, error = "No exportable review comments for current buffer" }
     end
 
     copy_to_clipboard(content)
@@ -1203,16 +1293,16 @@ function M.setup()
 
   vim.api.nvim_create_user_command("ReviewCommentsCopy", function()
     M.export()
-  end, { desc = "Copy current file review comments" })
+  end, { desc = "Copy current buffer review comments" })
 
   vim.api.nvim_create_user_command("ReviewCommentsCopyAndClear", function()
     M.export()
     M.clear { silent_warn = true }
-  end, { desc = "Copy and then clear current file review comments" })
+  end, { desc = "Copy and then clear current buffer review comments" })
 
   vim.api.nvim_create_user_command("ReviewCommentsClear", function()
     M.clear()
-  end, { desc = "Clear current file review comments" })
+  end, { desc = "Clear current buffer review comments" })
 
   vim.keymap.set("n", "]r", function()
     jump_comment(1)
@@ -1222,13 +1312,19 @@ function M.setup()
     jump_comment(-1)
   end, { desc = "Previous review comment" })
 
-  -- 进入文件或保存文件后重绘，可确保外部修改后的定位与标记保持同步。
+  -- 进入文件或保存文件后重绘；首次写盘时顺带把未命名 buffer 的临时 comment 迁移到文件态。
   vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost" }, {
     group = group,
     callback = function(args)
-      if vim.bo[args.buf].buftype == "" then
-        stop_refresh_timer(args.buf)
-        render_buffer(args.buf)
+      if vim.bo[args.buf].buftype ~= "" then
+        return
+      end
+
+      stop_refresh_timer(args.buf)
+      local promoted = args.event == "BufWritePost" and promote_temp_state_to_file(args.buf)
+      render_buffer(args.buf)
+      if promoted then
+        notify_preview_refresh(args.buf)
       end
     end,
   })
@@ -1255,11 +1351,14 @@ function M.setup()
     callback = close_hover,
   })
 
-  -- buffer 被销毁时回收定时器，避免悬挂句柄。
+  -- buffer 被销毁时回收定时器；未命名 buffer 的临时 comment 也在此时一并释放。
   vim.api.nvim_create_autocmd({ "BufWipeout", "BufUnload" }, {
     group = group,
     callback = function(args)
       stop_refresh_timer(args.buf)
+      if args.event == "BufWipeout" then
+        temp_cache[args.buf] = nil
+      end
       close_hover()
     end,
   })
