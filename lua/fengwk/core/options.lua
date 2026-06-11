@@ -86,8 +86,34 @@ local function unnamed_paste()
   return vim.split(vim.fn.getreg('"'), "\n"), vim.fn.getregtype('"')
 end
 
+-- WSL 下优先使用 win32yank 读取 Windows 剪贴板；即使在 tmux 中也保持 `p` 可直接粘贴。
+if utils.os == "wsl" and utils.has_cmd("win32yank.exe") then
+  local copy = nil
+  local clipboard_name = 'wsl-win32yank'
+  if osc52_ok then
+    copy = {
+      ['+'] = osc52.copy('+'),
+      ['*'] = osc52.copy('*'),
+    }
+    clipboard_name = 'wsl-osc52-win32yank'
+  else
+    copy = {
+      ['+'] = 'timeout 2s win32yank.exe -i --crlf',
+      ['*'] = 'timeout 2s win32yank.exe -i --crlf',
+    }
+  end
+
+  vim.g.clipboard = {
+    name = clipboard_name,
+    copy = copy,
+    paste = {
+      ['+'] = 'timeout 2s win32yank.exe -o --lf',
+      ['*'] = 'timeout 2s win32yank.exe -o --lf',
+    },
+    cache_enabled = 0,
+  }
 -- ssh 或 tmux 环境支持 osc52，使远程连接和 tmux 会话都能共享剪切板。
-if (os.getenv("SSH_TTY") ~= nil or os.getenv("TMUX") ~= nil) and osc52_ok then
+elseif (os.getenv("SSH_TTY") ~= nil or os.getenv("TMUX") ~= nil) and osc52_ok then
   vim.g.clipboard = {
     name = 'OSC 52',
     copy = {
@@ -102,36 +128,6 @@ if (os.getenv("SSH_TTY") ~= nil or os.getenv("TMUX") ~= nil) and osc52_ok then
     },
     cache_enabled = 0,
   }
-elseif utils.os == "wsl" then
-  local copy = nil
-  if osc52_ok then
-    copy = {
-      ['+'] = osc52.copy('+'),
-      ['*'] = osc52.copy('*'),
-    }
-  elseif utils.has_cmd("win32yank.exe") then
-    copy = {
-      ['+'] = 'timeout 2s win32yank.exe -i --crlf',
-      ['*'] = 'timeout 2s win32yank.exe -i --crlf',
-    }
-  end
-
-  local paste_command = nil
-  if utils.has_cmd("win32yank.exe") then
-    paste_command = 'timeout 2s win32yank.exe -o --lf'
-  end
-
-  if copy ~= nil and paste_command ~= nil then
-    vim.g.clipboard = {
-      name = 'wsl-osc52-win32yank',
-      copy = copy,
-      paste = {
-        ['+'] = paste_command,
-        ['*'] = paste_command,
-      },
-      cache_enabled = 0,
-    }
-  end
 elseif os.getenv("WAYLAND_DISPLAY") ~= nil and utils.has_cmd("wl-copy") and utils.has_cmd("wl-paste") then
   vim.g.clipboard = {
     name = 'wl-clipboard',
