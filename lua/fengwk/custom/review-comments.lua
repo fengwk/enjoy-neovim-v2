@@ -38,6 +38,49 @@ local function normalize_path(path)
   return vim.fn.fnamemodify(vim.fn.expand(path), ":p")
 end
 
+local function write_system_clipboard_with_command(command, content, backend)
+  local ok, output = pcall(vim.fn.system, command, content)
+  if not ok then
+    return false, string.format("Failed to copy review comments via %s: %s", backend, tostring(output))
+  end
+
+  if vim.v.shell_error ~= 0 then
+    local detail = vim.trim(tostring(output or ""))
+    if detail == "" then
+      detail = string.format("shell exit code %d", vim.v.shell_error)
+    end
+    return false, string.format("Failed to copy review comments via %s: %s", backend, detail)
+  end
+
+  return true
+end
+
+-- 浏览器侧触发的 copy 不一定发生在 nvim 所在 tmux window 仍为前台时。
+-- 直接调用系统剪贴板命令可以绕过 OSC52 必须经过当前前台终端输出流的限制。
+local function write_system_clipboard_direct(content)
+  if utils.os == "wsl" and utils.has_cmd("win32yank.exe") then
+    local ok, err = write_system_clipboard_with_command({ "win32yank.exe", "-i", "--crlf" }, content, "win32yank")
+    return ok, err, true
+  end
+
+  if utils.os == "macos" and utils.has_cmd("pbcopy") then
+    local ok, err = write_system_clipboard_with_command({ "pbcopy" }, content, "pbcopy")
+    return ok, err, true
+  end
+
+  if os.getenv("WAYLAND_DISPLAY") ~= nil and utils.has_cmd("wl-copy") then
+    local ok, err = write_system_clipboard_with_command({ "wl-copy", "--type", "text/plain" }, content, "wl-copy")
+    return ok, err, true
+  end
+
+  if utils.has_cmd("xclip") then
+    local ok, err = write_system_clipboard_with_command({ "xclip", "-selection", "clipboard", "-in" }, content, "xclip")
+    return ok, err, true
+  end
+
+  return true, nil, false
+end
+
 -- 将多行文本拆成数组，供定位、导出与浮窗展示复用。
 local function split_lines(text)
   return vim.split(text or "", "\n", { plain = true })
@@ -819,9 +862,26 @@ local function get_comment_selected_text(comment)
 end
 
 local function copy_to_clipboard(content)
-  vim.fn.setreg('"', content)
-  vim.fn.setreg('+', content)
-  vim.fn.setreg('*', content)
+  local direct_ok, direct_err, direct_handled = write_system_clipboard_direct(content)
+  if direct_handled and not direct_ok then
+    return false, direct_err
+  end
+
+  local ok_default, err_default = pcall(vim.fn.setreg, '"', content)
+  local ok_plus, err_plus = pcall(vim.fn.setreg, '+', content)
+  local ok_star, err_star = pcall(vim.fn.setreg, '*', content)
+
+  if not ok_default then
+    return false, tostring(err_default)
+  end
+  if not ok_plus then
+    return false, tostring(err_plus)
+  end
+  if not ok_star then
+    return false, tostring(err_star)
+  end
+
+  return true
 end
 
 local function build_export_content(bufnr, opts)
@@ -871,7 +931,48 @@ local function build_export_content(bufnr, opts)
   return table.concat(lines, "\n"), state
 end
 
-local function clear_buffer_comments(bufnr, opts)
+local clear_buffer_comments
+
+local function copy_export_content(bufnr, opts)
+  local content, state = build_export_content(bufnr, opts)
+  if not content then
+    return false, state, "No exportable review comments for current buffer"
+  end
+
+  local ok, err = copy_to_clipboard(content)
+  if not ok then
+    return false, state, err
+  end
+
+  return true, state, nil
+end
+
+local function build_unresolved_copy_warning(unresolved_count)
+  if unresolved_count == 1 then
+    return "Copied review comments to clipboard, but 1 unresolved comment was kept to avoid data loss"
+  end
+
+  return string.format("Copied review comments to clipboard, but %d unresolved comments were kept to avoid data loss", unresolved_count)
+end
+
+local function copy_and_clear_buffer(bufnr, opts)
+  local ok, state, err = copy_export_content(bufnr, opts)
+  if not ok then
+    return false, state, err
+  end
+
+  if state.unresolved_count > 0 then
+    return false, state, build_unresolved_copy_warning(state.unresolved_count)
+  end
+
+  if not clear_buffer_comments(bufnr, { silent_warn = true }) then
+    return false, state, "Failed to clear review comments for current buffer"
+  end
+
+  return true, state, nil
+end
+
+clear_buffer_comments = function(bufnr, opts)
   opts = opts or {}
   local state = load_buffer_state(bufnr)
   if #state.comments == 0 then
@@ -1051,15 +1152,27 @@ end
 function M.export(opts)
   opts = opts or {}
   local bufnr = vim.api.nvim_get_current_buf()
-  local content, state = build_export_content(bufnr, opts)
-  if not content then
+  local ok, state, err = copy_export_content(bufnr, opts)
+  if not ok then
+    notify(err, vim.log.levels.ERROR)
     return false
   end
 
-  copy_to_clipboard(content)
   if state.unresolved_count > 0 then
     notify(string.format("Review comments exported to clipboard (%d unresolved comments skipped)", state.unresolved_count), vim.log.levels.WARN)
   end
+  return true
+end
+
+function M.copy_and_clear(opts)
+  opts = opts or {}
+  local bufnr = vim.api.nvim_get_current_buf()
+  local ok, _, err = copy_and_clear_buffer(bufnr, opts)
+  if not ok then
+    notify(err, vim.log.levels.WARN)
+    return false
+  end
+
   return true
 end
 
@@ -1221,12 +1334,11 @@ function M.mkdp_apply(bufnr, action, payload)
   end
 
   if action == "copy" then
-    local content, export_state = build_export_content(bufnr, { silent_warn = true })
-    if not content then
-      return { ok = false, error = "No exportable review comments for current buffer" }
+    local ok, export_state, err = copy_export_content(bufnr, { silent_warn = true })
+    if not ok then
+      return { ok = false, error = err }
     end
 
-    copy_to_clipboard(content)
     return {
       ok = true,
       unresolved_count = export_state and export_state.unresolved_count or 0,
@@ -1234,13 +1346,15 @@ function M.mkdp_apply(bufnr, action, payload)
   end
 
   if action == "copy_and_clear" then
-    local content, export_state = build_export_content(bufnr, { silent_warn = true })
-    if not content then
-      return { ok = false, error = "No exportable review comments for current buffer" }
+    local ok, export_state, err = copy_and_clear_buffer(bufnr, { silent_warn = true })
+    if not ok then
+      return {
+        ok = false,
+        error = err,
+        unresolved_count = export_state and export_state.unresolved_count or 0,
+      }
     end
 
-    copy_to_clipboard(content)
-    clear_buffer_comments(bufnr, { silent_warn = true })
     return {
       ok = true,
       unresolved_count = export_state and export_state.unresolved_count or 0,
@@ -1296,8 +1410,7 @@ function M.setup()
   end, { desc = "Copy current buffer review comments" })
 
   vim.api.nvim_create_user_command("ReviewCommentsCopyAndClear", function()
-    M.export()
-    M.clear { silent_warn = true }
+    M.copy_and_clear()
   end, { desc = "Copy and then clear current buffer review comments" })
 
   vim.api.nvim_create_user_command("ReviewCommentsClear", function()
