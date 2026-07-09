@@ -189,24 +189,20 @@ function M.auto_record_buffer_enter()
       write_data()
     end)
   else
-    -- 处理工作区切换
+    -- 处理工作区切换：只更新状态和记录 last_file，不 cd。
+    -- cwd 由 LSP on_attach 等其他机制管理；workspace 只在用户
+    -- 显式打开 workspace（<leader>fs / VimEnter）时才切换 cwd。
     for root_path, _ in pairs(data) do
       if vim.startswith(last_file, root_path .. utils.sp) then
-        if utils.cd(root_path) then
-          current_workspace = root_path
-          if vim.startswith(last_file, current_workspace .. utils.sp) then
-            local cur_ws = current_workspace
-            vim.schedule(function()
-              data[cur_ws] = {
-                last_file = last_file,
-              }
-              data_cache = data
-              write_data()
-            end)
-          end
-        else
-          vim.notify("Workspace '" .. root_path .. "' directory not accessible.", vim.log.levels.WARN)
-        end
+        current_workspace = root_path
+        local cur_ws = current_workspace
+        vim.schedule(function()
+          data[cur_ws] = {
+            last_file = last_file,
+          }
+          data_cache = data
+          write_data()
+        end)
         break
       end
     end
