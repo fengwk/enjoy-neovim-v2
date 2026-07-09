@@ -253,12 +253,10 @@ local function build_conf(base_conf)
         if not git and vim.uv.fs_stat(vim.fs.joinpath(dir, ".git")) then
           git = dir
         end
-        if not marker then
-          for _, m in ipairs(root_markers) do
-            if vim.uv.fs_stat(vim.fs.joinpath(dir, m)) then
-              marker = dir
-              break
-            end
+        for _, m in ipairs(root_markers) do
+          if vim.uv.fs_stat(vim.fs.joinpath(dir, m)) then
+            marker = dir
+            break
           end
         end
         local parent = vim.fs.dirname(dir)
