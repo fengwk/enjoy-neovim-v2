@@ -14,7 +14,7 @@ end
 -- https://github.com/nvim-telescope/telescope.nvim
 return {
   "nvim-telescope/telescope.nvim",
-  tag = "v0.2.1",
+  tag = "v0.2.2",
   -- branch = "0.1.x",
   event = "VeryLazy",
   config = function()
