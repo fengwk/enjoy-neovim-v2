@@ -240,12 +240,11 @@ local function build_conf(base_conf)
     -- Single-pass workspace-root search:
     -- Walk up from the file, collecting:
     --   - nearest .git → hard boundary (stops worktree leak)
-    --   - first root_marker hit within the boundary → project root
-    -- Return priority: rootMarker > .git > nil.
+    --   - nearest root_marker hit within the boundary → project root
     --
-    -- Monorepo: backend/pom.xml inside repo/.git wins over .git.
-    -- Worktree:  .git inside the worktree stops the walk; main-repo
-    --            pom.xml above it is never seen.
+    -- Returns nil when no marker was found within the boundary; the
+    -- server then starts in single-file mode at the file's directory.
+    -- .git is only a boundary, never a fallback project root.
     root_dir = function(bufnr, on_dir)
       local buf_filename = vim.api.nvim_buf_get_name(bufnr)
       local git, marker = nil, nil
@@ -266,7 +265,7 @@ local function build_conf(base_conf)
         if parent == dir then break end
         dir = parent
       end
-      on_dir(marker or git)
+      on_dir(marker)
     end,
 
     capabilities = base_conf.capabilities and base_conf.capabilities or vim.lsp.protocol.make_client_capabilities(),
