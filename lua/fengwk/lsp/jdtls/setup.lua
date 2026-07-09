@@ -237,9 +237,26 @@ local function build_conf(base_conf)
   }
 
   return vim.tbl_extend('force', base_conf, {
+    -- 优先以最近的 .git（worktree 文件或主仓库目录）作为项目边界，
+    -- 避免穿透 git worktree 找到主仓库根；没有 .git 时退回旧的 build marker 逻辑。
     root_dir = function(bufnr, on_dir)
       local buf_filename = vim.api.nvim_buf_get_name(bufnr)
-      local markers = vim.fs.find(root_markers, { path = buf_filename, limit = math.huge, upward = true })
+
+      local git_markers = vim.fs.find({ ".git" }, {
+        path = buf_filename,
+        limit = math.huge,
+        upward = true,
+      })
+      if git_markers and #git_markers > 0 then
+        on_dir(vim.fs.dirname(git_markers[1]))
+        return
+      end
+
+      local markers = vim.fs.find(root_markers, {
+        path = buf_filename,
+        limit = math.huge,
+        upward = true,
+      })
       local root = markers and #markers > 0 and vim.fs.dirname(markers[#markers]) or nil
       on_dir(root)
     end,
