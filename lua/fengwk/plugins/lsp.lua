@@ -176,10 +176,17 @@ local function build_lsp_conf(server, capabilities)
       bind_dap_keymaps(bufnr)
       bind_lspsaga_keymaps(bufnr)
 
-      -- 定位到根目录, 如果是单文件 lsp 则不会重定位
+      -- 定位到根目录, 如果是单文件 lsp 则不会重定位。
+      -- 当 cwd 已经是 root_dir 或其祖先目录时（例如 workspace 系统已
+      -- 导航到项目根），不再 cd — 否则会从项目根缩小到 LSP 子模块目录。
       local root_dir = client.root_dir
       if not utils.is_empty_str(root_dir) and utils.is_dir(root_dir) then
-        utils.cd(root_dir)
+        local cwd = vim.fn.getcwd()
+        if vim.startswith(root_dir, cwd .. "/") or root_dir == cwd then
+          -- cwd 已经是正确的工作上下文，不需要 cd
+        else
+          utils.cd(root_dir)
+        end
       end
 
       -- 使用 telescope 搜索诊断信息
