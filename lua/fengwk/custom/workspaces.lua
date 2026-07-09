@@ -111,9 +111,10 @@ function M.list()
   return ws_list
 end
 
---- 打开指定的工作区
+--- 切换到指定工作区（仅 cd，不打开 last_file）。
+--- VimEnter 和 auto detection 用这个，last_file 只在用户显式选中时恢复。
 ---@param ws_root string 工作区根路径
-function M.open(ws_root)
+function M.switch(ws_root)
   if not ws_root or ws_root == "" then
     return
   end
@@ -136,10 +137,19 @@ function M.open(ws_root)
   current_workspace = ws_root
 
   local ws_name = vim.fn.fnamemodify(ws_root, ":t")
-  local file_to_open = data[ws_root] and data[ws_root].last_file
+  vim.notify("Workspace opened: " .. ws_name)
+end
+
+--- 打开指定的工作区并恢复 last_file
+---@param ws_root string 工作区根路径
+function M.open(ws_root)
+  M.switch(ws_root)
+  if not current_workspace then return end
+
+  local data = M.read_data()
+  local file_to_open = data[current_workspace] and data[current_workspace].last_file
 
   if not file_to_open or not utils.exists(file_to_open) then
-    vim.notify("Workspace opened: " .. ws_name)
     return
   end
 
@@ -148,9 +158,7 @@ function M.open(ws_root)
       return
     end
     local ok, err = pcall(vim.cmd, "edit " .. vim.fn.fnameescape(file_to_open))
-    if ok then
-      vim.notify("Workspace opened: " .. ws_name)
-    else
+    if not ok then
       local clean_err = tostring(err):gsub("\n", " ")
       vim.notify("Failed to open last file: " .. clean_err, vim.log.levels.ERROR)
     end
@@ -235,15 +243,15 @@ function M.setup()
     end,
   })
 
-  -- 启动时自动打开工作区
+  -- 启动时自动打开工作区（仅 cd，不打开 last_file）。
+  -- last_file 只在用户显式选中 workspace 时恢复。
   vim.api.nvim_create_autocmd("VimEnter", {
     group = group,
     callback = function()
       if vim.fn.argc() == 0 and is_empty_file() then
-        local cwd = vim.fn.getcwd()
-        local ws_root = find_workspace_root(cwd)
+        local ws_root = find_workspace_root(vim.fn.getcwd())
         if ws_root then
-          M.open(ws_root)
+          M.switch(ws_root)
         end
       else
         M.auto_record_buffer_enter()
