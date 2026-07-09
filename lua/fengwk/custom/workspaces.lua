@@ -239,15 +239,15 @@ function M.setup()
     end,
   })
 
-  -- 启动时自动打开工作区（仅 cd，不打开 last_file）。
-  -- last_file 只在用户显式选中 workspace 时恢复。
+  -- 启动时仅追踪 workspace，不自动 cd。
+  -- workspace 切换必须由用户显式触发（<leader>fs / Telescope）。
   vim.api.nvim_create_autocmd("VimEnter", {
     group = group,
     callback = function()
       if vim.fn.argc() == 0 and is_empty_file() then
         local ws_root = find_workspace_root(vim.fn.getcwd())
         if ws_root then
-          M.switch(ws_root)
+          current_workspace = ws_root
         end
       else
         M.auto_record_buffer_enter()
