@@ -180,10 +180,6 @@ function M.auto_record_buffer_enter()
   end
 
   local data = M.read_data()
-  if current_workspace and not data[current_workspace] then
-    current_workspace = nil
-    return
-  end
 
   local last_file = utils.normalize_path(file_path)
   if current_workspace and vim.startswith(last_file, current_workspace .. utils.sp) then
