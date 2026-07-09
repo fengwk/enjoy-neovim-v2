@@ -237,27 +237,47 @@ local function build_conf(base_conf)
   }
 
   return vim.tbl_extend('force', base_conf, {
-    -- 优先以最近的 .git（worktree 文件或主仓库目录）作为项目边界，
-    -- 避免穿透 git worktree 找到主仓库根；没有 .git 时退回旧的 build marker 逻辑。
+    -- Find workspace root in two phases:
+    -- 1. Locate the nearest .git (file or directory) as a hard boundary to
+    --    prevent git-worktree leak into the main repository.
+    -- 2. Walk up again from the file, stopping at the .git boundary, and
+    --    collect build-marker hits (topmost/shallowest wins).
+    --
+    -- Return priority: rootMarkers > .git root > nil
+    -- This keeps monorepos correct (e.g. backend/pom.xml below repo .git)
+    -- while still stopping at the worktree boundary.
     root_dir = function(bufnr, on_dir)
       local buf_filename = vim.api.nvim_buf_get_name(bufnr)
 
-      local git_markers = vim.fs.find({ ".git" }, {
-        path = buf_filename,
-        limit = math.huge,
-        upward = true,
-      })
-      if git_markers and #git_markers > 0 then
-        on_dir(vim.fs.dirname(git_markers[1]))
-        return
+      -- Phase 1: find the nearest .git boundary (if any).
+      local git = nil
+      for _, marker in ipairs(vim.fs.find({ ".git" }, {
+        path = buf_filename, limit = math.huge, upward = true,
+      })) do
+        git = vim.fs.dirname(marker)
+        break
       end
 
+      -- Phase 2: scan root_markers upward, stopping at the .git boundary.
       local markers = vim.fs.find(root_markers, {
-        path = buf_filename,
-        limit = math.huge,
-        upward = true,
+        path = buf_filename, limit = math.huge, upward = true,
       })
-      local root = markers and #markers > 0 and vim.fs.dirname(markers[#markers]) or nil
+      -- Collect markers that are within (or equal to) the .git root.
+      -- vim.fs.find returns results nearest → farthest, so the first
+      -- directory outside the boundary means we are done.
+      local within = {}
+      for _, marker in ipairs(markers) do
+        local dir = vim.fs.dirname(marker)
+        if git then
+          local prefix = git .. "/"
+          if not (dir == git or vim.startswith(dir, prefix)) then
+            break
+          end
+        end
+        table.insert(within, dir)
+      end
+      -- Topmost (shallowest) build marker within boundary, or git root fallback.
+      local root = #within > 0 and within[#within] or git
       on_dir(root)
     end,
 
