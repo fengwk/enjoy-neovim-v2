@@ -112,17 +112,13 @@ function M.list()
 end
 
 --- 切换到指定工作区（仅 cd，不打开 last_file）。
---- VimEnter 和 auto detection 用这个，last_file 只在用户显式选中时恢复。
+--- 由用户显式触发（<leader>fs / Telescope 选中）。
 ---@param ws_root string 工作区根路径
 function M.switch(ws_root)
   if not ws_root or ws_root == "" then
     return
   end
   ws_root = utils.normalize_path(ws_root)
-
-  if ws_root == current_workspace then
-    return
-  end
 
   local data = M.read_data()
   if not data[ws_root] then
