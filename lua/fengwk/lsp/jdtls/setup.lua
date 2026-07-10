@@ -273,10 +273,15 @@ local function build_conf(base_conf)
       -- 在启动时计算 root 和 heap_size
       local root = config.root_dir or vim.fn.getcwd()
       local heap_size = estimate_heap_size(root)
+      -- 按 root_dir 算独立的 jdtls workspace dir，每项目隔离，避免 m2e 索引跨项目污染。
+      local data_dir = vim.fn.stdpath("cache")
+        .. "/jdtls/workspace/"
+        .. vim.fn.fnamemodify(root, ":t")
       local cmd_array = {
-        'env',
-        'JAVA_HOME=' .. java_home_preset.java_home_21,
+        "env",
+        "JAVA_HOME=" .. java_home_preset.java_home_21,
         jdtls_cmd,
+        "-data", data_dir,
         "--jvm-arg=-javaagent:" .. lombok_jar,
         "--jvm-arg=-Xmx" .. heap_size,
         "--jvm-arg=-XX:+UseZGC",
@@ -404,7 +409,35 @@ local function build_conf(base_conf)
 end
 
 local function setup(base_conf)
-  utils.setup_lsp("jdtls", build_conf(base_conf), true)
+  local conf = build_conf(base_conf)
+
+  -- 手动补齐 require('jdtls').start_or_attach 会做但 utils.setup_lsp 漏掉的初始化。
+  -- 详见 nvim-jdtls/lua/jdtls/setup.lua 中 M.start_or_attach 的实现。
+  local jdtls = require("jdtls")
+
+  conf.handlers = conf.handlers or {}
+  -- ServiceReady 后 jdtls 会用此回调设置 path 等内部状态
+  conf.handlers["language/status"] = conf.handlers["language/status"] or function(_, result)
+    if result and result.message then
+      vim.notify(result.message, vim.log.levels.INFO)
+    end
+  end
+  conf.handlers["workspace/configuration"] = conf.handlers["workspace/configuration"]
+    or function(err, result, ctx, config)
+      return vim.lsp.handlers["workspace/configuration"](err, result, ctx, config)
+    end
+
+  -- extendedClientCapabilities 让 jdtls server 知道 client 支持哪些扩展能力
+  conf.init_options = conf.init_options or {}
+  conf.init_options.extendedClientCapabilities = (
+    conf.init_options.extendedClientCapabilities
+    or vim.deepcopy(jdtls.extendedClientCapabilities)
+  )
+
+  -- java = {} 这个标记用于 util.get_clients 识别 jdtls 客户端
+  conf.settings = vim.tbl_deep_extend("keep", conf.settings or {}, { java = {} })
+
+  utils.setup_lsp("jdtls", conf, true)
 end
 
 return setup

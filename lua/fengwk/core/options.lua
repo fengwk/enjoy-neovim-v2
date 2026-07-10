@@ -75,7 +75,7 @@ vim.o.listchars = "tab:>-,trail:·,precedes:«,extends:»,"
 -- clipboard 控制未显式指定寄存器时，普通 y/d/p 使用哪个系统剪贴板。
 -- unnamedplus: 将无名寄存器 `"` 绑定到 `+` / CLIPBOARD，即 Ctrl-C/Ctrl-V 语义。
 -- unnamed: 将无名寄存器 `"` 绑定到 `*`；在 Linux/X11 下通常是 PRIMARY selection，即鼠标选中/中键粘贴。
--- append("unnamedplus") 会保留已有值；如果此前已有 unnamed，y/d 会额外同步到 `*`。
+-- append("unnamedplus") 会保留已有值；如果此前已有 unnamed，y/d/p 会额外同步到 `*`。
 -- 这里显式只使用 unnamedplus，避免 PRIMARY selection 参与普通 y/d/p。
 -- 参考：https://stackoverflow.com/questions/30691466/what-is-difference-between-vims-clipboard-unnamed-and-unnamedplus-settings
 vim.opt.clipboard = "unnamedplus"
@@ -86,7 +86,9 @@ local function unnamed_paste()
   return vim.split(vim.fn.getreg('"'), "\n"), vim.fn.getregtype('"')
 end
 
--- WSL 下优先使用 win32yank 读取 Windows 剪贴板；即使在 tmux 中也保持 `p` 可直接粘贴。
+-- WSL 下：
+-- copy 走 OSC 52 写到 pty，由 tmux 中转到 Windows Terminal，落进 Windows 剪贴板。
+-- paste 走 win32yank.exe 读 Windows 剪贴板（与 OSC 52 写入对应）。
 if utils.os == "wsl" and utils.has_cmd("win32yank.exe") then
   local copy = nil
   local clipboard_name = 'wsl-win32yank'
@@ -107,6 +109,7 @@ if utils.os == "wsl" and utils.has_cmd("win32yank.exe") then
     name = clipboard_name,
     copy = copy,
     paste = {
+      -- timeout 2s 防止新版 Windows 上 win32yank.exe panic 死锁时 nvim hang
       ['+'] = 'timeout 2s win32yank.exe -o --lf',
       ['*'] = 'timeout 2s win32yank.exe -o --lf',
     },
