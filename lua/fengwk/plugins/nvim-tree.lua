@@ -25,6 +25,19 @@ return {
     local keymap = vim.keymap.set
     keymap("n", "<leader>e", "<cmd>NvimTreeFindFile<cr>", { silent = true })
     keymap("n", "<leader>E", "<cmd>NvimTreeFindFileToggle<cr>", { silent = true })
+
+    -- 通过 `nvim 文件路径` 启动时, 自动以文件所在目录作为文件树根.
+    local utils = require "fengwk.utils"
+    vim.api.nvim_create_autocmd("VimEnter", {
+      group = vim.api.nvim_create_augroup("user_nvim_tree_root", { clear = true }),
+      callback = function()
+        local first = vim.fn.argv(0)
+        if first == "" or vim.fn.filereadable(first) == 0 then
+          return
+        end
+        utils.cd(vim.fs.dirname(vim.fn.fnamemodify(first, ":p")))
+      end,
+    })
   end,
   dependencies = {
     "nvim-tree/nvim-web-devicons"
